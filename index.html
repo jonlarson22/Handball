@@ -21,9 +21,9 @@
 </header>
 
 <nav class="app-tabs" id="app-tabs">
-    <button class="app-tab active" data-screen="leaderboard">Leaderboard</button>
+    <button class="app-tab active" data-screen="leaderboard">Rankings</button>
     <button class="app-tab" data-screen="tournaments">Tournaments</button>
-    <button class="app-tab" data-screen="enter">Enter Result</button>
+    <button class="app-tab" data-screen="enter">Enter Results</button>
     <button class="app-tab" data-screen="history">History</button>
     <button class="app-tab" data-screen="admin" id="tab-admin">Admin</button>
 </nav>
@@ -31,7 +31,7 @@
 <main class="app">
 
     <section id="screen-leaderboard" class="screen">
-        <div class="page-head"><h2>Club Leaderboard</h2></div>
+        <div class="page-head"><h2>Club Rankings</h2></div>
 <input type="text" id="playerSearch" class="search-input" placeholder="🔍 Search players..." onkeyup="filterTable()">
 <div class="tab-bar">
     <div id="vS" class="tab active-tab" onclick="setView('singles')">SINGLES</div>
@@ -92,7 +92,7 @@
     </section>
 
     <section id="screen-enter" class="screen" hidden>
-        <div class="page-head"><h2>Enter Match Result</h2><p class="muted">Submissions go to the review queue before ratings update.</p></div>
+        <div class="page-head"><h2>Enter Match Results</h2><p class="muted">Submissions go to the review queue before ratings update.</p></div>
 
     <div class="tab-bar">
         <div id="tS" class="tab active-tab" onclick="setMode('singles')">SINGLES</div>
@@ -187,7 +187,7 @@
             <button class="admin-subtab" data-astab="roles" id="astab-roles">Roles</button>
         </nav>
         <div id="admin-review" class="ascreen"><div id="adminQueue" style="margin-bottom: 25px;"></div></div>
-        <div id="admin-players" class="ascreen" hidden><div class="panel"><h2 class="admin-only">Admin Panel</h2>
+        <div id="admin-players" class="ascreen" hidden><div class="panel">
 <div class="mgmt-box admin-only">
     <div style="display: flex; gap: 20px; margin-bottom: 15px;">
         <div style="flex: 1;">

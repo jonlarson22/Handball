@@ -776,17 +776,17 @@ body.admin-mode th.admin-only { display: table-cell !important; }
 
 .role-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
     padding: 10px 0;
     border-bottom: 1px solid var(--border-color);
 }
 .role-row:last-child { border-bottom: none; }
 .role-email {
-    overflow-wrap: break-word;
+    flex: 1 1 180px;
     min-width: 0;
-    flex: 1;
+    overflow-wrap: anywhere;
 }
 .role-row select {
     background: #2d2d2d;

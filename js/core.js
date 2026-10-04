@@ -77,15 +77,48 @@ function switchScreen(name) {
 document.querySelectorAll('#app-tabs .app-tab').forEach(t =>
     t.addEventListener('click', () => switchScreen(t.dataset.screen)));
 
+let activeAdminTab = 'review';
+const ADMIN_TABS = ['review', 'players', 'tournaments', 'data', 'roles'];
+const ADMIN_GATES = { review: 'review', players: 'players', tournaments: 'tournaments', data: 'data', roles: 'roles' };
+
 function switchAdminTab(name) {
-    const perm = { review: 'review', players: 'players', tournaments: 'tournaments', data: 'data', roles: 'roles' }[name];
-    if (perm && !can(perm)) return;
-    document.querySelectorAll('#admin-subtabs .admin-subtab').forEach(t =>
-        t.classList.toggle('active', t.dataset.astab === name));
-    document.querySelectorAll('.ascreen').forEach(s => {
-        s.hidden = (s.id !== 'admin-' + name);
-    });
+    if (!name || !can(ADMIN_GATES[name])) return;
+    activeAdminTab = name;
+    applyAdminTabVisibility();
     window.scrollTo(0, 0);
+}
+
+function applyAdminTabVisibility() {
+    const loggedOut = !currentUser;
+    const noRole = currentUser && !isAdmin;
+
+    const subtabs = document.getElementById('admin-subtabs');
+    if (subtabs) subtabs.hidden = loggedOut || noRole;
+    document.querySelectorAll('#admin-subtabs .admin-subtab').forEach(t => {
+        t.hidden = !can(ADMIN_GATES[t.dataset.astab]);
+        t.classList.toggle('active', t.dataset.astab === activeAdminTab);
+    });
+
+    // keep the active tab on something the user may actually see
+    if (isAdmin && !can(ADMIN_GATES[activeAdminTab])) {
+        const first = ADMIN_TABS.find(n => can(ADMIN_GATES[n]));
+        if (first) activeAdminTab = first;
+    }
+
+    ADMIN_TABS.forEach(n => {
+        const el = document.getElementById('admin-' + n);
+        if (!el) return;
+        let visible;
+        if (loggedOut) visible = false;
+        else if (!isAdmin) visible = (n === 'roles');  // request-access lives here
+        else visible = (n === activeAdminTab);
+        el.hidden = !visible;
+    });
+
+    const managePanel = document.getElementById('roles-manage-panel');
+    if (managePanel) managePanel.hidden = !!noRole;
+    const reqPanel = document.getElementById('request-access-panel');
+    if (reqPanel) reqPanel.hidden = !noRole;
 }
 document.querySelectorAll('#admin-subtabs .admin-subtab').forEach(t =>
     t.addEventListener('click', () => switchAdminTab(t.dataset.astab)));
@@ -111,27 +144,7 @@ function refreshAuthUI() {
         if (emailEl && currentUser) emailEl.textContent = currentUser.email || '';
     }
 
-    const subtabs = document.getElementById('admin-subtabs');
-    if (subtabs) subtabs.hidden = loggedOut || noRole;
-    const gates = { review: 'review', players: 'players', tournaments: 'tournaments', data: 'data', roles: 'roles' };
-    document.querySelectorAll('#admin-subtabs .admin-subtab').forEach(t => {
-        t.hidden = !can(gates[t.dataset.astab]);
-    });
-    ['review', 'players', 'tournaments', 'data', 'roles'].forEach(n => {
-        const el = document.getElementById('admin-' + n);
-        if (el) el.hidden = loggedOut ? true : (noRole ? (n !== 'roles') : !can(gates[n]));
-    });
-    const managePanel = document.getElementById('roles-manage-panel');
-    if (managePanel) managePanel.hidden = noRole;
-    const reqPanel = document.getElementById('request-access-panel');
-    if (reqPanel) reqPanel.hidden = !noRole;
-
-    // if the active subtab just got hidden, fall back to the first visible one
-    const activeSub = document.querySelector('#admin-subtabs .admin-subtab.active');
-    if (activeSub && activeSub.hidden) {
-        const first = document.querySelector('#admin-subtabs .admin-subtab:not([hidden])');
-        if (first) switchAdminTab(first.dataset.astab);
-    }
+    applyAdminTabVisibility();
 
     if (typeof updateTournamentAuthUI === 'function') updateTournamentAuthUI();
     if (typeof render === 'function') {
