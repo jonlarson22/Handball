@@ -1,15 +1,1 @@
-{
-  "short_name": "Handball",
-  "name": "Handball \u2014 Utah Handball Association",
-  "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ],
-  "start_url": "index.html",
-  "background_color": "#121212",
-  "display": "standalone",
-  "theme_color": "#3498db"
-}
+{"background_color":"#121212","display":"standalone","icons":[{"sizes":"512x512","src":"icon.png","type":"image/png"}],"id":"https://jonlarson22.github.io/Handball/","name":"Handball — Utah Handball Association","scope":"/Handball/","short_name":"Handball","start_url":"index.html","theme_color":"#3498db"}
