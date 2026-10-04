@@ -13,6 +13,28 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+/* Shared player store (Phase 2 hardening): exactly one players listener for
+   both halves. Firebase stores arrays as numeric-keyed objects, so every
+   subscriber always gets a real array with stable ids. */
+function normalizePlayers(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    return Object.keys(val).sort((a, b) => (+a) - (+b)).map(k => {
+        const p = val[k];
+        if (p && typeof p === 'object' && (p.id === undefined || p.id === null)) {
+            p.id = isNaN(+k) ? k : +k;
+        }
+        return p;
+    });
+}
+let clubPlayers = [];
+const playersSubscribers = [];
+function onPlayersUpdate(fn) { playersSubscribers.push(fn); }
+db.ref('players').on('value', (snap) => {
+    clubPlayers = normalizePlayers(snap.val());
+    playersSubscribers.forEach(fn => { try { fn(clubPlayers); } catch (e) { console.error('players subscriber failed:', e); } });
+});
+
 let isAdmin = false;
 
 function switchView(name) {

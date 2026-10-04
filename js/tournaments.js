@@ -101,22 +101,11 @@ window.toggleFormatOptions = function() {
 };
 
 function refreshRosterFromDB() {
-    db.ref('players').once('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            allPlayers = Object.keys(data).map(key => {
-                const p = data[key];
-                p.id = p.id || key; 
-                return p;
-            });
-        } else {
-            allPlayers = [];
-        }
-        
-        renderRoster();
-        const connStatus = document.getElementById('connection-status');
-        if(connStatus) connStatus.innerText = "Realtime Connected ✅";
-    });
+    allPlayers = clubPlayers;
+
+    renderRoster();
+    const connStatus = document.getElementById('connection-status');
+    if (connStatus) connStatus.innerText = "Realtime Connected ✅";
 }
 searchInput.addEventListener('input', renderRoster);
 
@@ -760,7 +749,7 @@ function renderTournamentView() {
     let html = '';
     lockedDivisions.forEach((div, divIdx) => {
         let formatLabel = div.format.includes('elim') ? 'Knockout' : 'Round Robin';
-        html += `<div class="section-title" style="margin-top: 40px; border-top: 1px solid #444; padding-top:20px;">${div.name} (${div.mode} - ${formatLabel})</div>`;
+        html += `<div id="division-${divIdx}" class="section-title" style="margin-top: 40px; border-top: 1px solid #444; padding-top:20px;">${div.name} (${div.mode} - ${formatLabel})</div>`;
         
         if (div.format === 'single_elim' || div.format === 'double_elim') {
 
@@ -1037,8 +1026,6 @@ window.saveScore = function() {
 
     const winningTeam = match.winner === 'p1' ? match.p1 : match.p2;
     const losingTeam = match.winner === 'p1' ? match.p2 : match.p1;
-    const wName = winningTeam && winningTeam.name ? winningTeam.name : '';
-    const lName = losingTeam && losingTeam.name ? losingTeam.name : '';
 
     let detailedGames = [];
     for(let i=0; i<3; i++) {
@@ -1051,22 +1038,24 @@ window.saveScore = function() {
         }
     }
 
-    const getIdsFromNames = (teamNameStr) => {
-        if (!teamNameStr || typeof teamNameStr !== 'string') return [];
-        const names = teamNameStr.split(' & '); 
-        return names.map(name => {
-            const trimmedName = name.trim();
-            const foundPlayer = allPlayers.find(p => p.name === trimmedName);
-            return foundPlayer ? Number(foundPlayer.id) : 0; 
-        }).filter(id => id !== 0);
+    // Player ids ride on the team objects from draft time (no name matching).
+    const teamPlayerIds = (team) => {
+        if (!team || !Array.isArray(team.ids)) return [];
+        return team.ids.map(Number).filter(id => !isNaN(id));
     };
+    const winnerIds = teamPlayerIds(winningTeam);
+    const loserIds = teamPlayerIds(losingTeam);
+    if (!winnerIds.length || !loserIds.length) {
+        alert("Could not resolve player IDs for this match — score was not queued.");
+        return;
+    }
 
     const pendingMatch = {
         id: Date.now(),
-        mode: div.mode ? div.mode.toLowerCase() : 'unknown', 
+        mode: div.mode ? div.mode.toLowerCase() : 'unknown',
         score: `${Math.max(p1Wins, p2Wins)}-${Math.min(p1Wins, p2Wins)}`,
-        winners: getIdsFromNames(wName),
-        losers: getIdsFromNames(lName),
+        winners: winnerIds,
+        losers: loserIds,
         games: detailedGames
     };
 
@@ -1311,16 +1300,35 @@ function loadArchiveList() {
     });
 }
 
+let currentTourneyPath = null;
+function refreshDivisionSelector() {
+    const sel = document.getElementById('public-division-selector');
+    if (!sel) return;
+    sel.innerHTML = '<option value="all">All Events</option>';
+    lockedDivisions.forEach((div, i) => {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = div.name || ('Event ' + (i + 1));
+        sel.appendChild(o);
+    });
+}
 function loadTournamentData(path) {
+    if (currentTourneyPath) db.ref('tournaments/' + currentTourneyPath).off();
+    currentTourneyPath = path;
+    const divSel = document.getElementById('public-division-selector');
+    if (divSel) divSel.value = 'all';
     db.ref('tournaments/' + path).on('value', (snapshot) => {
         const data = snapshot.val();
         if (data && data.divisions) {
             lockedDivisions = data.divisions;
             const titleEl = document.getElementById('tourney-title');
             if(titleEl) titleEl.innerText = data.name || "Live Tournament";
-            
-            renderTournamentView(); 
+
+            renderTournamentView();
+            refreshDivisionSelector();
         } else {
+            lockedDivisions = [];
+            refreshDivisionSelector();
             const container = document.getElementById('matchup-container');
             if(container) container.innerHTML = "<div style='text-align:center; padding: 50px; color: #888;'>No tournament data found for this selection.</div>";
         }
@@ -1347,6 +1355,15 @@ window.editActiveTournament = function() {
     });
 };
 
+const divSelector = document.getElementById('public-division-selector');
+if (divSelector) {
+    divSelector.addEventListener('change', (e) => {
+        if (e.target.value === 'all') return;
+        const el = document.getElementById('division-' + e.target.value);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+}
+
 const pubSelector = document.getElementById('public-tournament-selector');
 if (pubSelector) {
     pubSelector.addEventListener('change', (e) => {
@@ -1359,12 +1376,11 @@ if (pubSelector) {
             archiveBtn.style.display = (isAdmin && !isViewingArchive) ? 'block' : 'none';
         }
 
-        db.ref('tournaments').off(); 
         loadTournamentData(path);
     });
 }
 
 loadArchiveList();
-refreshRosterFromDB();
+onPlayersUpdate(refreshRosterFromDB);
 
 loadTournamentData('active');

@@ -14,6 +14,9 @@ function checkAdmin() {
 
 let players = [];
 let history = [];
+
+/* players arrive from the shared store in core.js */
+onPlayersUpdate((arr) => { players = arr; render(); if (isAdmin) renderQueue(); });
 let pending = [];	
 let mode = 'singles';	
 let currentView = 'singles';
@@ -24,7 +27,6 @@ const rowsPerPage = 20;
 db.ref('/').on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
-        players = data.players || [];
         history = data.history || [];
         
         const pendingData = data.pending || {};
@@ -489,7 +491,7 @@ function importFullData(e) {
     reader.onload = (ev) => {
         try {
             const data = JSON.parse(ev.target.result);
-            players = data.players || []; 
+            players = normalizePlayers(data.players); 
             history = data.history || [];
             pending = data.pending || [];
             save(); 
