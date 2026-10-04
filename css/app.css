@@ -111,7 +111,9 @@ body {
         background: #1e1e1e; 
         padding: 30px; 
         border-radius: 16px; 
-        width: 950px; 
+        width: 100%;
+        max-width: 950px;
+        box-sizing: border-box;
         box-shadow: 0 15px 50px rgba(0,0,0,0.7); 
         border: 1px solid #333; 
     }
@@ -604,3 +606,15 @@ body {
     width: auto; /* Ensures it only takes up as much space as the text needs */
 }
 
+
+/* ---- small screens: the old apps were built at desktop widths ---- */
+@media (max-width: 640px) {
+    body { padding: 10px; }
+    #view-rankings .container { padding: 15px; border-radius: 10px; }
+    #view-rankings h1 { font-size: 22px !important; letter-spacing: 1px !important; }
+    #view-rankings .match-card { flex-direction: column; gap: 10px; }
+    #view-rankings .h2h-grid { gap: 10px; }
+    #view-tournaments .setup-columns { flex-direction: column; }
+    #view-tournaments .uha-container { padding: 15px; }
+    .app-tab { padding: 12px 6px; font-size: 13px; }
+}
