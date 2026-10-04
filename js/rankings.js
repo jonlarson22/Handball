@@ -27,21 +27,13 @@ db.ref('/').on('value', (snapshot) => {
         render(); 
         if (isAdmin) renderQueue();
         
-        const connStatus = document.getElementById('connection-status');
-        if (connStatus) {
-            connStatus.innerText = "Realtime Connected ✅";
-            connStatus.style.color = "#2ecc71";
-        }
+        if (typeof setConnectionStatus === 'function') setConnectionStatus(true);
     } else {
         render();
     }
 }, (error) => {
     console.error("Firebase Load Failed:", error);
-    const connStatus = document.getElementById('connection-status');
-    if (connStatus) {
-        connStatus.innerText = "Connection Failed";
-        connStatus.style.color = "#e74c3c";
-    }
+    if (typeof setConnectionStatus === 'function') setConnectionStatus(false);
 });
 
 	function setView(v) { 

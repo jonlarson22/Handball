@@ -57,6 +57,14 @@ function can(perm) {
     }
 }
 
+/* ---------- connection status (green = live, red = failed) ---------- */
+function setConnectionStatus(ok) {
+    const el = document.getElementById('connection-status');
+    if (!el) return;
+    el.innerText = ok ? 'Realtime Connected ✅' : 'Connection Failed';
+    el.style.color = ok ? '#2ecc71' : '#e74c3c';
+}
+
 /* ---------- navigation ---------- */
 function switchScreen(name) {
     document.querySelectorAll('#app-tabs .app-tab').forEach(t =>

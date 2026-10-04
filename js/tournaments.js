@@ -65,8 +65,7 @@ function refreshRosterFromDB() {
     allPlayers = clubPlayers;
 
     renderRoster();
-    const connStatus = document.getElementById('connection-status');
-    if (connStatus) connStatus.innerText = "Realtime Connected ✅";
+    if (typeof setConnectionStatus === 'function') setConnectionStatus(true);
 }
 searchInput.addEventListener('input', renderRoster);
 
