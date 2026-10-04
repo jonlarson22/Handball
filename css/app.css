@@ -626,5 +626,12 @@ body {
     #view-tournaments #public-division-selector { min-width: 0 !important; width: 100%; }
     #view-tournaments .standings-table { display: block; overflow-x: auto; font-size: 12px; }
     #view-tournaments .standings-table th, #view-tournaments .standings-table td { padding: 8px 6px; }
+    /* brackets fit width-wise like the old app instead of scrolling sideways */
+    #view-tournaments .bracket-columns { gap: 8px; overflow-x: visible; padding: 10px 0; }
+    #view-tournaments .bracket-round,
+    #view-tournaments .bracket-matches { min-width: 0; max-width: none; flex: 1 1 0; gap: 8px; }
+    #view-tournaments .bracket-header { font-size: 11px; margin-bottom: 8px !important; }
+    #view-tournaments .match-card { padding: 6px 8px; }
+    #view-tournaments .match-team { font-size: 11px; }
     .app-tab { padding: 12px 6px; font-size: 13px; }
 }
