@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Handball — Utah Handball Association</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3498db">
+    <meta name="theme-color" content="#0d1117">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Handball">
@@ -15,24 +15,86 @@
 <body>
 <div id="toast"></div>
 
-<nav class="app-tabbar">
-    <button id="apptab-rankings" class="app-tab active" onclick="switchView('rankings')">Rankings</button>
-    <button id="apptab-tournaments" class="app-tab" onclick="switchView('tournaments')">Tournaments</button>
+<header class="topbar">
+    <div class="brand">Utah Handball</div>
+    <button id="auth-btn" class="auth-btn" onclick="checkAdmin()">Admin Login</button>
+</header>
+
+<nav class="app-tabs" id="app-tabs">
+    <button class="app-tab active" data-screen="leaderboard">Leaderboard</button>
+    <button class="app-tab" data-screen="tournaments">Tournaments</button>
+    <button class="app-tab" data-screen="enter">Enter Result</button>
+    <button class="app-tab" data-screen="history">History</button>
+    <button class="app-tab" data-screen="admin" id="tab-admin" hidden>Admin</button>
 </nav>
 
-<section id="view-rankings">
+<main class="app">
 
-
-	
-<div class="container">
-
-<div style="text-align: center; margin-bottom: 25px; border-bottom: 2px solid #3498db; padding-bottom: 15px;">
-    <h1 onclick="checkAdmin()" style="color: #3498db; margin: 0; font-size: 32px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 4px 10px rgba(52,152,219,0.3); cursor: pointer;" title="Admin Access">
-    UTAH HANDBALL ASSOCIATION</h1>
-    <p style="margin: 5px 0 0; color: #f1c40f; font-weight: normal; letter-spacing: 1px; text-transform: uppercase;">Official ELO Rankings & Match History</p>
+    <section id="screen-leaderboard" class="screen">
+        <div class="page-head"><h2>Club Leaderboard</h2></div>
+<h2>Leaderboard</h2>
+<input type="text" id="playerSearch" class="search-input" placeholder="🔍 Search players..." onkeyup="filterTable()">
+<div class="tab-bar">
+    <div id="vS" class="tab active-tab" onclick="setView('singles')">SINGLES</div>
+    <div id="vD" class="tab" onclick="setView('doubles')">DOUBLES</div>
 </div>
 
-    <h2>Result Entry</h2>
+<table id="leaderboardTable" style="width: 100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background: #222;">
+            <th style="width: 15%; text-align: center; padding: 10px;">Rank</th>
+            <th style="width: 45%; text-align: left; padding: 10px;">Name</th>
+            <th style="width: 20%; text-align: center; padding: 10px;">Current</th>
+            <th style="width: 20%; text-align: center; padding: 10px;">Peak</th> 
+        </tr>
+    </thead>
+    <tbody id="leaderboardBody"></tbody>
+</table>
+
+<div id="paginationControls" style="display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 10px;"></div>
+    </section>
+
+    <section id="screen-tournaments" class="screen" hidden>
+        <div class="page-head"><h2>Tournament Dashboard</h2></div>
+<div class="tourney-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #2a2a2a; padding: 15px; border-radius: 8px;">
+            
+            <div style="flex: 1;">
+               <h2 id="tourney-title" class="your-yellow-text-class">Live Tournament</h2>
+            </div>
+
+            <div style="flex: 1; text-align: center;">
+                <button id="btn-back-setup" class="uha-btn-outline" onclick="goToAdminTournaments()" style="display: none; border-color: var(--uha-blue); color: var(--uha-blue);">
+                    ⚙️ Back to Admin Setup
+                </button>
+            </div>
+
+            <div style="flex: 1; text-align: right;">
+                <div style="margin-bottom: 8px;">
+                    <label for="public-tournament-selector" style="margin-right: 10px; font-weight: bold; color: var(--uha-blue);">Tournament:</label>
+                    <select id="public-tournament-selector" class="uha-input" style="width: auto; min-width: 250px;">
+                        <option value="active">Current Live Tournament</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="public-division-selector" style="margin-right: 10px; font-weight: bold; color: var(--uha-blue);">Event:</label>
+                    <select id="public-division-selector" class="uha-input" style="width: auto; min-width: 250px;">
+                        <option value="all">All Events</option>
+                    </select>
+                </div>
+            </div>
+
+        </div>
+        
+        <div id="matchup-container"></div>
+        <div id="tourney-admin-actions" class="tourney-actions" style="display:none;">
+            <button id="btn-reset" onclick="goToAdminTournaments()" class="uha-btn-blue" style="flex: 1;">BACK TO SETUP</button>
+            <button id="btn-archive" class="uha-btn-outline" onclick="archiveTournament()" style="flex: 1; border-color: var(--uha-gold); color: var(--uha-gold);">Archive Finished Tournament</button>
+        </div>
+    </section>
+
+    <section id="screen-enter" class="screen" hidden>
+        <div class="page-head"><h2>Enter Match Result</h2><p class="muted">Submissions go to the review queue before ratings update.</p></div>
+<h2>Result Entry</h2>
     <div class="tab-bar">
         <div id="tS" class="tab active-tab" onclick="setMode('singles')">SINGLES</div>
         <div id="tD" class="tab" onclick="setMode('doubles')">DOUBLES</div>
@@ -60,29 +122,11 @@
     </div>
 </div>
     <button class="match-btn" onclick="processMatch()">SUBMIT SCORE</button>
-	
-    <h2>Leaderboard</h2>
-<input type="text" id="playerSearch" class="search-input" placeholder="🔍 Search players..." onkeyup="filterTable()">
-<div class="tab-bar">
-    <div id="vS" class="tab active-tab" onclick="setView('singles')">SINGLES</div>
-    <div id="vD" class="tab" onclick="setView('doubles')">DOUBLES</div>
-</div>
+    </section>
 
-<table id="leaderboardTable" style="width: 100%; border-collapse: collapse;">
-    <thead>
-        <tr style="background: #222;">
-            <th style="width: 15%; text-align: center; padding: 10px;">Rank</th>
-            <th style="width: 45%; text-align: left; padding: 10px;">Name</th>
-            <th style="width: 20%; text-align: center; padding: 10px;">Current</th>
-            <th style="width: 20%; text-align: center; padding: 10px;">Peak</th> 
-        </tr>
-    </thead>
-    <tbody id="leaderboardBody"></tbody>
-</table>
-
-<div id="paginationControls" style="display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 10px;"></div>
-
-	<h2>Head-to-Head</h2>
+    <section id="screen-history" class="screen" hidden>
+        <div class="page-head"><h2>History</h2></div>
+<h2>Head-to-Head</h2>
     <div class="h2h-box">
         <div style="display:flex; gap:10px; margin-bottom:15px;">
             <select id="h2hA" onchange="runH2H()"></select>
@@ -106,9 +150,7 @@
         </div>
     </div>
 
-<div id="adminQueue" class="admin-only" style="margin-bottom: 25px;"></div>
-
-    <h2>Match History</h2>
+<h2>Match History</h2>
     <div class="history-box">
         <table id="historyTable">
             <thead>
@@ -125,6 +167,19 @@
     </div>
 
 	<h2 class="admin-only">Admin Panel</h2>
+    </section>
+
+    <section id="screen-admin" class="screen" hidden>
+        <div class="page-head"><h2>Admin</h2></div>
+        <nav class="admin-subtabs" id="admin-subtabs">
+            <button class="admin-subtab active" data-astab="review">Review</button>
+            <button class="admin-subtab" data-astab="players">Players</button>
+            <button class="admin-subtab" data-astab="tournaments">Tournaments</button>
+            <button class="admin-subtab" data-astab="data">Data</button>
+            <button class="admin-subtab" data-astab="roles" id="astab-roles">Roles</button>
+        </nav>
+        <div id="admin-review" class="ascreen"><div id="adminQueue" style="margin-bottom: 25px;"></div></div>
+        <div id="admin-players" class="ascreen" hidden><div class="panel"><h2 class="admin-only">Admin Panel</h2>
 <div class="mgmt-box admin-only">
     <div style="display: flex; gap: 20px; margin-bottom: 15px;">
         <div style="flex: 1;">
@@ -171,43 +226,12 @@
         </div>
     </div>
 
-    <div style="margin-top: 20px; display: flex; gap: 10px;">
-        <button onclick="exportFullData()" style="background:#2ecc71; color: #111; font-weight:bold; flex: 1;">📥 Download Data</button>
-        
-        <button onclick="document.getElementById('importFile').click()" style="background:#3498db; flex: 1;">📤 Import Data</button>
-        
-        <input type="file" id="importFile" style="display:none" onchange="importFullData(event)">
-    </div>
-
-    <div style="text-align: center; width: 100%; margin-top: 15px;">
-        <p style="font-size: 11px; color: #666; margin: 0;">
-            System Status: <span id="statP">0</span> Players | <span id="statM">0</span> Matches
-        </p>
     </div>
 </div>
-
-<div style="text-align: center; margin-bottom: 25px; border-bottom: 2px solid #3498db; padding-bottom: 15px;">
-    <div id="syncStatus" style="font-size: 11px; color: #666; margin-top: 10px; font-style: italic;">Loading data...</div>
 </div>
+        <div id="admin-tournaments" class="ascreen" hidden><section id="admin-dashboard">
 
-</div>
-
-</section>
-
-<section id="view-tournaments" hidden>
-<div class="uha-container">
-    <div style="border-bottom: 2px solid var(--uha-blue); padding-bottom: 20px; margin-bottom: 30px; text-align: center;">
-        <h2 id="header-title" style="color: var(--uha-blue); margin: 0; font-size: 32px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 4px 10px rgba(52,152,219,0.3); cursor: pointer;" title="Admin Access">
-            Utah Handball Association
-        </h2>
-        <h3 style="color: var(--uha-gold); margin-top: 5px; font-weight: normal; letter-spacing: 1px; margin-bottom: 0; text-transform: uppercase;">
-            Tournament Dashboard
-        </h3>
-    </div>
-    
-    <section id="admin-dashboard">
-
-        <button class="uha-btn" onclick="goToBracketView()" style="margin-bottom: 20px; background-color: var(--uha-gold); color: black;">
+        <button class="uha-btn" onclick="goToPublicBracket()" style="margin-bottom: 20px; background-color: var(--uha-gold); color: black;">
             👀 View Live Bracket / Enter Scores
         </button>
         
@@ -310,52 +334,46 @@
 
         </div>
     </section>
-
-    <section id="tournament-view" style="display:none;">
+    </div>
+        <div id="admin-data" class="ascreen" hidden><div class="panel">
+            <h3>Database</h3>
+<div style="margin-top: 20px; display: flex; gap: 10px;">
+        <button onclick="exportFullData()" style="background:#2ecc71; color: #111; font-weight:bold; flex: 1;">📥 Download Data</button>
         
-        <div class="tourney-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #2a2a2a; padding: 15px; border-radius: 8px;">
-            
-            <div style="flex: 1;">
-               <h2 id="tourney-title" class="your-yellow-text-class">Live Tournament</h2>
-            </div>
-
-            <div style="flex: 1; text-align: center;">
-                <button id="btn-back-setup" class="uha-btn-outline" onclick="goToSetupView()" style="display: none; border-color: var(--uha-blue); color: var(--uha-blue);">
-                    ⚙️ Back to Admin Setup
-                </button>
-            </div>
-
-            <div style="flex: 1; text-align: right;">
-                <div style="margin-bottom: 8px;">
-                    <label for="public-tournament-selector" style="margin-right: 10px; font-weight: bold; color: var(--uha-blue);">Tournament:</label>
-                    <select id="public-tournament-selector" class="uha-input" style="width: auto; min-width: 250px;">
-                        <option value="active">Current Live Tournament</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="public-division-selector" style="margin-right: 10px; font-weight: bold; color: var(--uha-blue);">Event:</label>
-                    <select id="public-division-selector" class="uha-input" style="width: auto; min-width: 250px;">
-                        <option value="all">All Events</option>
-                    </select>
-                </div>
-            </div>
-
-        </div>
+        <button onclick="document.getElementById('importFile').click()" style="background:#3498db; flex: 1;">📤 Import Data</button>
         
-        <div id="matchup-container"></div>
-        
-        <div style="display: flex; gap: 15px; margin-top: 30px;">
-            <button id="btn-reset" onclick="location.reload()" class="uha-btn-blue" style="flex: 1;">BACK TO SETUP</button>
-            <button id="btn-archive" class="uha-btn-outline" onclick="archiveTournament()" style="display:none; flex: 1; border-color: var(--uha-gold); color: var(--uha-gold);">Archive Finished Tournament</button>
-        </div>
+        <input type="file" id="importFile" style="display:none" onchange="importFullData(event)">
+    </div>
+
+    <div style="text-align: center; width: 100%; margin-top: 15px;">
+        <p style="font-size: 11px; color: #666; margin: 0;">
+            System Status: <span id="statP">0</span> Players | <span id="statM">0</span> Matches
+        </p>
+    </div>
+</div>
+
+<div style="text-align: center; margin-bottom: 25px; border-bottom: 2px solid #3498db; padding-bottom: 15px;">
+        </div></div>
+        <div id="admin-roles" class="ascreen" hidden><div id="roles-manage-panel"><div class="panel">
+    <h3>Admin Roles</h3>
+    <p class="muted">Only the owner can manage roles. Directors run tournaments; admins manage everything except roles.</p>
+    <div id="roles-list"></div>
+    <h3>Access Requests</h3>
+    <div id="access-requests"></div>
+</div></div>
+<div class="panel" id="request-access-panel" hidden>
+    <h3>Request Admin Access</h3>
+    <p class="muted">Your account is logged in but has no role yet. Ask the club owner to approve you.</p>
+    <button class="uha-btn" onclick="requestAdminAccess()">Request Access</button>
+</div></div>
     </section>
 
-    <div style="display:flex; justify-content: space-between; align-items:center; margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-            <button id="btn-logout" class="uha-btn-blue" style="display:none; padding: 5px 15px; font-size: 12px; width: auto;" onclick="logoutAdmin()">ADMIN LOGOUT</button>
-            <div id="connection-status" style="font-size: 12px; color: var(--text-muted);">Connecting to Firebase...</div>
-        </div>
-    
-</div>
+</main>
+
+<footer class="app-foot">
+    <div id="connection-status">Connecting to Firebase...</div>
+    <div id="syncStatus">Loading data...</div>
+</footer>
 
 <div id="score-modal" class="uha-modal" style="display:none;">
     <div class="uha-modal-content">
@@ -379,8 +397,8 @@
         </div>
 
         <div style="text-align: left; margin-bottom: 15px;">
-            <label style="color:var(--uha-blue); font-weight:bold; font-size: 14px;">Player Exact Name:</label>
-            <input type="text" id="move-player-name" placeholder="e.g. John Doe" class="uha-input" style="width:100%;">
+            <label style="color:var(--uha-blue); font-weight:bold; font-size: 14px;">Player:</label>
+            <select id="move-player-name" class="uha-input" style="width:100%;"></select>
         </div>
 
         <div style="display: flex; gap: 10px; margin-bottom: 15px; text-align:left;">
@@ -416,8 +434,6 @@
         </div>
     </div>
 </div>
-    
-</section>
 
 <div id="login-modal" class="uha-modal" style="display:none;">
     <div class="uha-modal-content">

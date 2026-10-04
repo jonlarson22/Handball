@@ -6,30 +6,9 @@ let isDoublesMode = false;
 let lockedDivisions = [];
 let isViewingArchive = false;
 
-document.getElementById('header-title').addEventListener('click', () => {
-    if (!isAdmin) {
-        document.getElementById('login-modal').style.display = 'flex';
-    }
-});
-
 function updateTournamentAuthUI() {
-    const safeDisplay = (id, displayStyle) => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = displayStyle;
-    };
-
-    if (isAdmin) {
-        safeDisplay('btn-logout', 'block');
-        safeDisplay('admin-dashboard', 'block');
-        safeDisplay('public-viewer', 'none');
-        safeDisplay('tournament-view', 'none');
-    } else {
-        safeDisplay('btn-logout', 'none');
-        safeDisplay('admin-dashboard', 'none');
-        safeDisplay('public-viewer', 'none');
-        safeDisplay('tournament-view', 'block');
-        loadTournamentData('active');
-    }
+    // New structure: public bracket lives on the Tournaments tab, setup lives
+    // under Admin > Tournaments. This only toggles the management buttons.
     updateVisibility();
 }
 
@@ -52,42 +31,42 @@ window.logoutAdmin = function() {
     });
 };
 
+function canManageTournaments() {
+    return (typeof can === 'function') ? can('tournaments') : isAdmin;
+}
+
 function updateVisibility() {
+    const canT = canManageTournaments();
     const archiveBtn = document.getElementById('btn-archive');
     const resetBtn = document.getElementById('btn-reset');
     const backSetupBtn = document.getElementById('btn-back-setup');
-    
-    if (isAdmin) {
-        if(archiveBtn) archiveBtn.style.display = 'block';
-        if(resetBtn) resetBtn.style.display = 'block'; 
-    } else {
-        if(archiveBtn) archiveBtn.style.display = 'none';
-        if(resetBtn) resetBtn.style.display = 'none'; 
-        if(backSetupBtn) backSetupBtn.style.display = 'none';
-    }
+    const adminActions = document.getElementById('tourney-admin-actions');
+
+    if (archiveBtn) archiveBtn.style.display = (canT && !isViewingArchive) ? 'block' : 'none';
+    if (resetBtn) resetBtn.style.display = canT ? 'block' : 'none';
+    if (backSetupBtn) backSetupBtn.style.display = canT ? 'block' : 'none';
+    if (adminActions) adminActions.style.display = canT ? 'flex' : 'none';
 }
 
 const teamDraftArea = document.getElementById('team-draft-area');
 const playerListDiv = document.getElementById('player-list');
 const searchInput = document.getElementById('player-search');
 
-document.getElementById('btn-mode-singles').addEventListener('click', (e) => {
-    isDoublesMode = false;
-    e.target.classList.add('active');
-    document.getElementById('btn-mode-doubles').classList.remove('active');
-    document.getElementById('draft-header').innerText = "Selected Players";
-    teamDraftArea.innerHTML = ''; 
+function setDoublesMode(on, opts = {}) {
+    // Switching modes clears the draft area — confirm first so a misclick
+    // can't wipe a half-built draft.
+    if (!opts.silent && teamDraftArea.children.length > 0
+        && !confirm('Switching modes will clear the current draft. Continue?')) return;
+    isDoublesMode = on;
+    document.getElementById('btn-mode-singles').classList.toggle('active', !on);
+    document.getElementById('btn-mode-doubles').classList.toggle('active', on);
+    document.getElementById('draft-header').innerText = on ? "Teams" : "Selected Players";
+    teamDraftArea.innerHTML = '';
     renderRoster();
-});
+}
 
-document.getElementById('btn-mode-doubles').addEventListener('click', (e) => {
-    isDoublesMode = true;
-    e.target.classList.add('active');
-    document.getElementById('btn-mode-singles').classList.remove('active');
-    document.getElementById('draft-header').innerText = "Teams";
-    teamDraftArea.innerHTML = ''; 
-    renderRoster();
-});
+document.getElementById('btn-mode-singles').addEventListener('click', () => setDoublesMode(false));
+document.getElementById('btn-mode-doubles').addEventListener('click', () => setDoublesMode(true));
 
 window.toggleFormatOptions = function() {
     const format = document.getElementById('division-format').value;
@@ -110,8 +89,13 @@ function refreshRosterFromDB() {
 searchInput.addEventListener('input', renderRoster);
 
 function getDraftedPlayerIds() {
-    const draftedElements = Array.from(teamDraftArea.querySelectorAll('.drafted-id'));
-    return draftedElements.map(p => p.dataset.id);
+    // ids from legacy hidden divs (doubles clones) plus slot datasets (singles
+    // slots and team slots carry their ids directly now)
+    const fromDivs = Array.from(teamDraftArea.querySelectorAll('.drafted-id')).map(p => p.dataset.id);
+    const fromSlots = Array.from(teamDraftArea.querySelectorAll('.singles-slot, .team-slot')).flatMap(el => {
+        try { return JSON.parse(el.dataset.ids || '[]'); } catch (e) { return []; }
+    });
+    return fromDivs.concat(fromSlots).map(String);
 }
 
 function renderRoster() {
@@ -152,11 +136,11 @@ playerListDiv.addEventListener('click', (e) => {
         singlesDiv.dataset.finalName = playerItem.dataset.name;
         singlesDiv.dataset.finalElo = playerItem.dataset.elo;
         
+        singlesDiv.dataset.ids = JSON.stringify([playerItem.dataset.id]);
         singlesDiv.innerHTML = `
             <div style="font-weight: bold;">
                 ${playerItem.dataset.name} <span style="color:var(--uha-blue); margin-left:10px;">${Math.round(playerItem.dataset.elo)}</span>
             </div>
-            <div class="drafted-id" data-id="${playerItem.dataset.id}" style="display:none;"></div>
             <button class="remove-team-btn">X</button>
         `;
         teamDraftArea.appendChild(singlesDiv);
@@ -205,14 +189,17 @@ function updateTeamElo(teamDiv) {
     const players = teamDiv.querySelectorAll('.drafted-id');
     let totalElo = 0;
     let names = [];
+    const ids = [];
     players.forEach(p => {
         totalElo += parseFloat(p.dataset.elo);
         names.push(p.dataset.name);
+        ids.push(p.dataset.id);
     });
     const avgElo = players.length > 0 ? Math.round(totalElo / players.length) : 0;
     teamDiv.querySelector('.team-elo').innerText = avgElo;
     teamDiv.dataset.finalName = names.join(' & ');
     teamDiv.dataset.finalElo = avgElo;
+    teamDiv.dataset.ids = JSON.stringify(ids);
 }
 
 document.getElementById('btn-add-player').addEventListener('click', () => {
@@ -270,15 +257,14 @@ document.getElementById('btn-lock-division').addEventListener('click', () => {
     if (participantElements.length < 2) return alert("Need at least 2 participants to lock a division.");
 
    const participants = Array.from(participantElements).map(el => {
-        const idElements = el.querySelectorAll('.drafted-id');
-        const ids = Array.from(idElements).map(idEl => {
-            return Number(idEl.dataset.id);
-    });
+        let ids = [];
+        try { ids = JSON.parse(el.dataset.ids || '[]'); } catch (e) { ids = []; }
+        ids = ids.map(Number).filter(n => !isNaN(n) && n > 0);
 
         return {
             name: el.dataset.finalName,
             elo: parseInt(el.dataset.finalElo),
-            ids: ids 
+            ids: ids
         };
     });
 
@@ -298,13 +284,16 @@ document.getElementById('btn-lock-division').addEventListener('click', () => {
     renderRoster();
 });
 
+const FORMAT_LABELS = { single_elim: 'Single Elim', double_elim: 'Double Elim', round_robin: 'Round Robin', multi_group_rr: 'Multi-Group RR' };
+const formatLabel = (f) => FORMAT_LABELS[f] || f;
+
 function renderLockedDivisions() {
     const divLog = document.getElementById('locked-divisions-list');
     divLog.innerHTML = '';
     lockedDivisions.forEach((div, index) => {
         divLog.innerHTML += `
             <div style="background: rgba(52, 152, 219, 0.1); padding: 8px; border-radius: 4px; margin-bottom: 5px; border-left: 3px solid var(--uha-blue);">
-                ✅ Locked: <b>${div.name} (${div.mode})</b> - ${div.participants.length} entries
+                ✅ Locked: <b>${div.name}</b> (${div.mode} · ${formatLabel(div.format)}) - ${div.participants.length} entries
                 <button class="unlock-btn" onclick="unlockDivision(${index})">Unlock</button>
             </div>
         `;
@@ -321,14 +310,12 @@ window.unlockDivision = function(index) {
         slot.className = divToUnlock.mode === "Singles" ? 'singles-slot' : 'team-slot';
         slot.dataset.finalName = p.name;
         slot.dataset.finalElo = p.elo;
-
-        let idHtml = (p.ids || []).map(id => `<div class="drafted-id" data-id="${id}" style="display:none;"></div>`).join('');
+        slot.dataset.ids = JSON.stringify(p.ids || []);
 
         slot.innerHTML = `
             <div style="font-weight: bold;">
                 ${p.name} <span style="color:var(--uha-blue); margin-left:10px;">${Math.round(p.elo)}</span>
             </div>
-            ${idHtml}
             <button class="remove-team-btn">X</button>
         `;
         teamDraftArea.appendChild(slot);
@@ -336,18 +323,9 @@ window.unlockDivision = function(index) {
     renderLockedDivisions();
 };
 
-window.goToBracketView = function() {
-    document.getElementById('admin-dashboard').style.display = 'none';
-    document.getElementById('tournament-view').style.display = 'block';
-
-    const backBtn = document.getElementById('btn-back-setup');
-    if (backBtn) backBtn.style.display = 'block';
-};
-
-window.goToSetupView = function() {
-    document.getElementById('tournament-view').style.display = 'none';
-    document.getElementById('admin-dashboard').style.display = 'block';
-};
+// Navigation now goes through the tab structure (core.js).
+window.goToBracketView = function() { goToPublicBracket(); };
+window.goToSetupView = function() { goToAdminTournaments(); };
 
 function buildSeededMatchups(teams) {
     let numTeams = teams.length;
@@ -386,7 +364,7 @@ function buildSeededMatchups(teams) {
     return matchups;
 }
 
-document.getElementById('btn-start').addEventListener('click', () => {
+function buildAndStartDivisions() {
     if (lockedDivisions.length === 0) return alert("You need to lock at least one division first!");
 
     lockedDivisions.forEach(division => {
@@ -584,12 +562,12 @@ document.getElementById('btn-start').addEventListener('click', () => {
         updatedAt: firebase.database.ServerValue.TIMESTAMP,
         divisions: lockedDivisions
     }).then(() => {
-        document.getElementById('admin-dashboard').style.display = 'none';
-        document.getElementById('tournament-view').style.display = 'block';
-        document.getElementById('tourney-title').innerText = tName; 
+        document.getElementById('tourney-title').innerText = tName;
         renderTournamentView();
+        goToPublicBracket();
     }).catch((e) => alert("Error: " + e.message));
-});
+}
+document.getElementById('btn-start').addEventListener('click', buildAndStartDivisions);
 
 function calculateStandings(players, matches) {
     let stats = {};
@@ -733,16 +711,7 @@ window.advanceToKnockout = function(divIdx) {
         lockedDivisions.push(newConsDiv);
     }
 
-    document.getElementById('btn-start').click(); 
-
-    const tName = document.getElementById('tournament-name').value || "Tournament";
-    db.ref('tournaments/active').set({
-        name: tName,
-        updatedAt: firebase.database.ServerValue.TIMESTAMP,
-        divisions: lockedDivisions
-    }).then(() => {
-        console.log("Knockout brackets synced.");
-    });
+    buildAndStartDivisions();
 };
 
 function renderTournamentView() {
@@ -848,7 +817,7 @@ function renderTournamentView() {
                 html += `</div>`;
             });
 
-            if (isAdmin) {
+            if (canManageTournaments()) {
                 html += `<button class="uha-btn uha-btn-gold" style="margin-top:10px; margin-bottom:30px;" onclick="advanceToKnockout(${divIdx})">Generate Knockout(s) from Standings</button>`;
             }
         }
@@ -859,8 +828,9 @@ function renderTournamentView() {
 }
 
 function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners') {
-    let teamA = match.p1 ? match.p1.name : "BYE";
-    let teamB = match.p2 ? match.p2.name : "BYE";
+    const slotName = (team) => team ? team.name : (match.scores === 'BYE' ? 'BYE' : 'TBD');
+    let teamA = slotName(match.p1);
+    let teamB = slotName(match.p2);
     
     let hasScore = match.scores && match.scores !== 'BYE';
     let scoreA = hasScore ? `[${match.p1Wins}]` : '';
@@ -884,14 +854,16 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
     if (isViewingArchive) {
         actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Archived - Read Only</div>`;
     } else if (teamA === "BYE" || teamB === "BYE") {
-        if (isAdmin && !hasScore) {
+        if (canManageTournaments() && !hasScore) {
             actionArea = `<button class="uha-btn uha-btn-outline" style="width:auto; padding:5px 10px; font-size:11px; border-color: #e74c3c; color: #e74c3c;" onclick="adminAutoWinBye(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Admin: Advance BYE</button>`;
         } else {
             actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Auto-Advance</div>`;
         }
+    } else if (teamA === "TBD" || teamB === "TBD") {
+        actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Awaiting players</div>`;
     } else if (!hasScore) {
         actionArea = `<button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>`;
-    } else if (hasScore && isAdmin) {
+    } else if (hasScore && canManageTournaments()) {
         actionArea = `<button class="uha-btn uha-btn-blue" style="width:auto; padding:5px 10px; font-size:11px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Edit Score</button>`;
     } else {
         actionArea = `<div style="color:var(--uha-gold); font-size:11px; text-align:center; padding:5px; font-weight:bold;">Complete</div>`;
@@ -1220,15 +1192,33 @@ window.adminAutoWinBye = function(divIdx, rIdx, mIdx, bType) {
 };
 
 window.openManualMoveModal = function() {
+    if (!canManageTournaments()) return;
     if (!lockedDivisions || lockedDivisions.length === 0) return alert("No active divisions to edit.");
     const selector = document.getElementById('move-div-idx');
     selector.innerHTML = lockedDivisions.map((div, i) => `<option value="${i}">${div.name}</option>`).join('');
+    selector.onchange = refreshMovePlayerOptions;
+    refreshMovePlayerOptions();
     document.getElementById('manual-move-modal').style.display = 'flex';
 };
 
+function refreshMovePlayerOptions() {
+    const sel = document.getElementById('move-player-name');
+    const divIdx = document.getElementById('move-div-idx').value;
+    const div = lockedDivisions[divIdx];
+    if (!sel || !div) return;
+    // Every option is a real participant, so the moved player always carries ids.
+    const seen = new Set();
+    const opts = (div.participants || []).filter(pt => {
+        const key = (pt.name || '').toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key); return true;
+    }).map(pt => `<option value="${pt.name}">${pt.name}</option>`).join('');
+    sel.innerHTML = opts || '<option value="">No participants</option>';
+}
+
 window.executeManualMove = function() {
     const divIdx = document.getElementById('move-div-idx').value;
-    const pName = document.getElementById('move-player-name').value.trim();
+    const pName = document.getElementById('move-player-name').value;
     const bType = document.getElementById('move-target-bracket').value; 
     const roundNum = parseInt(document.getElementById('move-target-round').value) - 1; // 0-indexed internally
     const matchNum = parseInt(document.getElementById('move-target-match').value) - 1; // 0-indexed internally
@@ -1244,9 +1234,13 @@ window.executeManualMove = function() {
         return alert("That specific round or match does not exist in the selected bracket.");
     }
 
-    let playerObj = allPlayers.find(p => p.name.toLowerCase() === pName.toLowerCase());
-    if (!playerObj) playerObj = div.participants.find(p => p.name.toLowerCase() === pName.toLowerCase());
-    if (!playerObj) playerObj = { name: pName, elo: 1000 }; // Final fallback
+    let playerObj = (div.participants || []).find(pt => pt.name === pName)
+        || allPlayers.find(pt => pt.name === pName);
+    // No id-less fallback: a manually moved player must resolve for the
+    // tournament -> approval queue -> ELO pipeline to work.
+    if (!playerObj || !playerObj.ids || !playerObj.ids.length) {
+        return alert("That player has no database record — add them to the database first.");
+    }
 
     targetBracket[roundNum][matchNum][slot] = playerObj;
 
@@ -1258,7 +1252,7 @@ window.executeManualMove = function() {
 };
 
 window.archiveTournament = function() {
-    if (!isAdmin) return;
+    if (!canManageTournaments()) return;
     
     db.ref('tournaments/active').once('value').then((snapshot) => {
         const data = snapshot.val();
@@ -1337,6 +1331,7 @@ function loadTournamentData(path) {
 }
 
 window.editActiveTournament = function() {
+    if (!canManageTournaments()) return;
     if (!confirm("This will pull the current live tournament back into the setup area. You can then 'Unlock' divisions to edit players. Ready?")) return;
 
     db.ref('tournaments/active').once('value').then((snapshot) => {
@@ -1346,9 +1341,17 @@ window.editActiveTournament = function() {
         lockedDivisions = data.divisions;
         document.getElementById('tournament-name').value = data.name || "";
 
-        document.getElementById('admin-dashboard').style.display = 'block';
-        document.getElementById('tournament-view').style.display = 'none';
+        const first = (lockedDivisions || [])[0];
+        if (first) {
+            setDoublesMode(first.mode === 'Doubles', { silent: true });
+            const fmtSel = document.getElementById('division-format');
+            if (fmtSel && first.format) {
+                fmtSel.value = first.format;
+                toggleFormatOptions();
+            }
+        }
 
+        goToAdminTournaments();
         renderLockedDivisions();
         renderRoster();
         
