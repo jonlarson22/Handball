@@ -50,13 +50,6 @@ body {
     text-transform: uppercase;
     text-shadow: 0 2px 12px rgba(52, 152, 219, 0.35);
 }
-.topbar .brand-sub {
-    color: var(--uha-gold);
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-top: 4px;
-}
 
 /* ---------- sticky tab bar (wraps 3 + 2 so every label reads fully) ---------- */
 .app-tabs {
@@ -93,7 +86,7 @@ body {
 
 /* ---------- screens & panels ---------- */
 .screen { width: 100%; }
-.screen[hidden], .ascreen[hidden], [hidden].app-tab { display: none !important; }
+[hidden] { display: none !important; }
 
 .panel {
     background: var(--bg-panel);
@@ -590,23 +583,35 @@ body.admin-mode th.admin-only { display: table-cell !important; }
 
 /* public bracket: bar + selectors */
 #screen-tournaments .tourney-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
     margin-bottom: 20px;
     background: #2a2a2a;
     padding: 15px;
     border-radius: 8px;
+    text-align: left;
 }
-#screen-tournaments .tourney-bar label {
+#screen-tournaments .tourney-bar .your-yellow-text-class {
+    text-align: left;
+    margin-bottom: 12px;
+}
+#screen-tournaments .tourney-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+#screen-tournaments .tourney-select label {
     display: block;
+    text-align: left;
     margin: 0 0 4px;
     font-weight: bold;
     color: var(--uha-blue);
 }
-#screen-tournaments #public-tournament-selector,
-#screen-tournaments #public-division-selector {
+#screen-tournaments .tourney-select .uha-input {
     width: 100%;
+    margin-bottom: 0;
+}
+#screen-tournaments #btn-back-setup {
+    align-self: flex-start;
+    margin-bottom: 4px;
 }
 #screen-tournaments .tourney-actions {
     display: flex;
@@ -833,17 +838,13 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     :is(#screen-tournaments, #admin-tournaments) .column { padding: 20px; }
     :is(#screen-tournaments, #admin-tournaments) #player-list { max-height: 500px; }
 
-    #screen-tournaments .tourney-bar {
+    #screen-tournaments .tourney-controls {
         flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
     }
-    #screen-tournaments .tourney-bar label { display: inline; margin: 0 10px 0 0; }
-    #screen-tournaments #public-tournament-selector,
-    #screen-tournaments #public-division-selector {
-        width: auto;
-        min-width: 250px;
-    }
+    #screen-tournaments .tourney-select { flex: 1; }
+    #screen-tournaments #btn-back-setup { margin-bottom: 0; }
 
     :is(#screen-tournaments, #admin-tournaments) .bracket-columns {
         gap: 20px;

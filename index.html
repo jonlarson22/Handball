@@ -17,7 +17,6 @@
 
 <header class="topbar">
     <div class="brand">Utah Handball</div>
-    <div class="brand-sub">Utah Handball Association</div>
 </header>
 
 <nav class="app-tabs" id="app-tabs">
@@ -55,33 +54,23 @@
 
     <section id="screen-tournaments" class="screen" hidden>
         <div class="page-head"><h2>Tournament Dashboard</h2></div>
-<div class="tourney-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #2a2a2a; padding: 15px; border-radius: 8px;">
-            
-            <div style="flex: 1;">
-               <h2 id="tourney-title" class="your-yellow-text-class">Live Tournament</h2>
-            </div>
-
-            <div style="flex: 1; text-align: center;">
-                <button id="btn-back-setup" class="uha-btn-outline" onclick="goToAdminTournaments()" style="display: none; border-color: var(--uha-blue); color: var(--uha-blue);">
-                    ⚙️ Back to Admin Setup
-                </button>
-            </div>
-
-            <div style="flex: 1; text-align: right;">
-                <div style="margin-bottom: 8px;">
-                    <label for="public-tournament-selector" style="margin-right: 10px; font-weight: bold; color: var(--uha-blue);">Tournament:</label>
-                    <select id="public-tournament-selector" class="uha-input" style="width: auto; min-width: 250px;">
+<div class="tourney-bar">
+            <h2 id="tourney-title" class="your-yellow-text-class">Live Tournament</h2>
+            <div class="tourney-controls">
+                <button id="btn-back-setup" class="uha-btn-outline" onclick="goToAdminTournaments()" style="display: none; border-color: var(--uha-blue); color: var(--uha-blue);">⚙️ Back to Admin Setup</button>
+                <div class="tourney-select">
+                    <label for="public-tournament-selector">Tournament:</label>
+                    <select id="public-tournament-selector" class="uha-input">
                         <option value="active">Current Live Tournament</option>
                     </select>
                 </div>
-                <div>
-                    <label for="public-division-selector" style="margin-right: 10px; font-weight: bold; color: var(--uha-blue);">Event:</label>
-                    <select id="public-division-selector" class="uha-input" style="width: auto; min-width: 250px;">
+                <div class="tourney-select">
+                    <label for="public-division-selector">Event:</label>
+                    <select id="public-division-selector" class="uha-input">
                         <option value="all">All Events</option>
                     </select>
                 </div>
             </div>
-
         </div>
         
         <div id="matchup-container"></div>
@@ -170,7 +159,6 @@
     <section id="screen-admin" class="screen" hidden>
         <div class="page-head"><h2>Admin</h2></div>
         <div class="panel" id="admin-login-panel" hidden>
-            <h3>Admin Login</h3>
             <input type="email" id="admin-email" class="uha-input" placeholder="Email" autocomplete="email">
             <input type="password" id="admin-pwd" class="uha-input" placeholder="Password" autocomplete="current-password">
             <button class="uha-btn uha-btn-blue" onclick="loginAdmin()">Login</button>
