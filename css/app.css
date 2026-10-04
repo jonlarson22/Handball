@@ -624,8 +624,10 @@ body {
     #view-tournaments .tourney-bar > div { text-align: left !important; }
     #view-tournaments #public-tournament-selector,
     #view-tournaments #public-division-selector { min-width: 0 !important; width: 100%; }
-    #view-tournaments .standings-table { display: block; overflow-x: auto; font-size: 12px; }
-    #view-tournaments .standings-table th, #view-tournaments .standings-table td { padding: 8px 6px; }
+    #view-tournaments .standings-table { table-layout: fixed; width: 100%; overflow-x: auto; font-size: 12px; }
+    #view-tournaments .standings-table th, #view-tournaments .standings-table td { padding: 8px 6px; overflow-wrap: break-word; }
+    #view-tournaments .tourney-bar label { display: block; margin: 0 0 4px; }
+    #view-tournaments .rr-match-grid .match-card { flex: 1 1 100%; max-width: none; }
     /* brackets fit width-wise like the old app instead of scrolling sideways */
     #view-tournaments .bracket-columns { gap: 8px; overflow-x: visible; padding: 10px 0; }
     #view-tournaments .bracket-round,
