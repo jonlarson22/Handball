@@ -616,5 +616,11 @@ body {
     #view-rankings .h2h-grid { gap: 10px; }
     #view-tournaments .setup-columns { flex-direction: column; }
     #view-tournaments .uha-container { padding: 15px; }
+    #view-tournaments #header-title { font-size: 22px !important; letter-spacing: 1px !important; }
+    #view-tournaments .tourney-bar { flex-direction: column; align-items: stretch !important; gap: 10px; }
+    #view-tournaments .tourney-bar > div { text-align: left !important; }
+    #view-tournaments #public-tournament-selector { min-width: 0 !important; width: 100%; }
+    #view-tournaments .standings-table { display: block; overflow-x: auto; font-size: 12px; }
+    #view-tournaments .standings-table th, #view-tournaments .standings-table td { padding: 8px 6px; }
     .app-tab { padding: 12px 6px; font-size: 13px; }
 }
