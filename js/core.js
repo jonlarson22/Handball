@@ -59,7 +59,6 @@ function can(perm) {
 
 /* ---------- navigation ---------- */
 function switchScreen(name) {
-    if (name === 'admin' && !currentUser) return;  // not logged in: no admin tab
     document.querySelectorAll('#app-tabs .app-tab').forEach(t =>
         t.classList.toggle('active', t.dataset.screen === name));
     document.querySelectorAll('.screen').forEach(s => {
@@ -90,23 +89,29 @@ function switchView(name) { switchScreen(name === 'rankings' ? 'leaderboard' : n
 
 /* ---------- auth UI ---------- */
 function refreshAuthUI() {
-    const btn = document.getElementById('auth-btn');
-    if (btn) btn.textContent = currentUser ? 'Logout' : 'Admin Login';
     document.body.classList.toggle('admin-mode', isAdmin);
 
-    const tab = document.getElementById('tab-admin');
-    if (tab) tab.hidden = !currentUser;
-
+    const loggedOut = !currentUser;
     const noRole = currentUser && !isAdmin;
+
+    const loginPanel = document.getElementById('admin-login-panel');
+    if (loginPanel) loginPanel.hidden = !loggedOut;
+    const userRow = document.getElementById('admin-user-row');
+    if (userRow) {
+        userRow.hidden = loggedOut;
+        const emailEl = document.getElementById('admin-user-email');
+        if (emailEl && currentUser) emailEl.textContent = currentUser.email || '';
+    }
+
     const subtabs = document.getElementById('admin-subtabs');
-    if (subtabs) subtabs.hidden = noRole;
+    if (subtabs) subtabs.hidden = loggedOut || noRole;
     const gates = { review: 'review', players: 'players', tournaments: 'tournaments', data: 'data', roles: 'roles' };
     document.querySelectorAll('#admin-subtabs .admin-subtab').forEach(t => {
         t.hidden = !can(gates[t.dataset.astab]);
     });
     ['review', 'players', 'tournaments', 'data', 'roles'].forEach(n => {
         const el = document.getElementById('admin-' + n);
-        if (el) el.hidden = noRole ? (n !== 'roles') : !can(gates[n]);
+        if (el) el.hidden = loggedOut ? true : (noRole ? (n !== 'roles') : !can(gates[n]));
     });
     const managePanel = document.getElementById('roles-manage-panel');
     if (managePanel) managePanel.hidden = noRole;
@@ -174,6 +179,20 @@ firebase.auth().onAuthStateChanged((user) => {
     }
     loadRoleAndFinish(user);
 });
+
+/* ---------- login / logout (Admin screen) ---------- */
+function loginAdmin() {
+    const emailEl = document.getElementById('admin-email');
+    const pwdEl = document.getElementById('admin-pwd');
+    const email = emailEl ? emailEl.value : '';
+    const pwd = pwdEl ? pwdEl.value : '';
+    firebase.auth().signInWithEmailAndPassword(email, pwd)
+        .then(() => { if (pwdEl) pwdEl.value = ''; })
+        .catch((error) => alert('Login failed: ' + error.message));
+}
+function logoutUser() {
+    firebase.auth().signOut().catch(e => alert('Logout failed: ' + e.message));
+}
 
 /* ---------- access requests & role management (owner) ---------- */
 function requestAdminAccess() {

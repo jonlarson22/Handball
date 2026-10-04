@@ -35,12 +35,36 @@ body {
     padding: 10px;
 }
 
-/* ---------- sticky tab bar ---------- */
+/* ---------- top bar ---------- */
+.topbar {
+    text-align: center;
+    padding: 14px 10px 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+.topbar .brand {
+    color: var(--uha-blue);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 12px rgba(52, 152, 219, 0.35);
+}
+.topbar .brand-sub {
+    color: var(--uha-gold);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+/* ---------- sticky tab bar (wraps 3 + 2 so every label reads fully) ---------- */
 .app-tabs {
     position: sticky;
     top: 0;
     z-index: 100;
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     background: var(--bg-deep);
     padding: 6px;
@@ -49,8 +73,7 @@ body {
     border: 1px solid var(--border-color);
 }
 .app-tab {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 1 1 30%;
     padding: 12px 4px;
     text-align: center;
     cursor: pointer;
@@ -737,6 +760,20 @@ body.admin-mode th.admin-only { display: table-cell !important; }
 }
 
 /* ---------- roles screen ---------- */
+.admin-user-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+}
+.admin-user-row .muted b { color: var(--text-light); }
+.admin-user-row .btn-sm { flex: 0 0 auto; }
+
 .role-row {
     display: flex;
     align-items: center;
@@ -774,7 +811,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
    ================================================================ */
 @media (min-width: 700px) {
     .app { padding: 20px; }
-    .app-tab { font-size: 15px; padding: 14px; }
+    .app-tab { flex: 1 1 0; font-size: 15px; padding: 14px; }
     .panel { padding: 30px; margin-bottom: 20px; }
 
     :is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) .match-card {

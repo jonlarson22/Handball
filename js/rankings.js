@@ -1,17 +1,6 @@
 /* Rankings half — ported from Utah-Handball/app.js (Phase 1 merge).
    Shared Firebase/auth now live in js/core.js. */
 
-function checkAdmin() {
-    if (isAdmin) {
-        firebase.auth().signOut();
-        showToast("Logged out.");
-        return;
-    }
-    const modal = document.getElementById('login-modal');
-    if (modal) modal.style.display = 'flex';
-}
-
-
 let players = [];
 let history = [];
 
@@ -38,20 +27,20 @@ db.ref('/').on('value', (snapshot) => {
         render(); 
         if (isAdmin) renderQueue();
         
-        const syncStatus = document.getElementById('syncStatus');
-        if (syncStatus) {
-            syncStatus.innerText = "Realtime Connected ✅";
-            syncStatus.style.color = "#2ecc71";
+        const connStatus = document.getElementById('connection-status');
+        if (connStatus) {
+            connStatus.innerText = "Realtime Connected ✅";
+            connStatus.style.color = "#2ecc71";
         }
     } else {
         render();
     }
 }, (error) => {
     console.error("Firebase Load Failed:", error);
-    const syncStatus = document.getElementById('syncStatus');
-    if (syncStatus) {
-        syncStatus.innerText = "Connection Failed";
-        syncStatus.style.color = "#e74c3c";
+    const connStatus = document.getElementById('connection-status');
+    if (connStatus) {
+        connStatus.innerText = "Connection Failed";
+        connStatus.style.color = "#e74c3c";
     }
 });
 

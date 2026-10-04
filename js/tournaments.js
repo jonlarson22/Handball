@@ -13,24 +13,6 @@ function updateTournamentAuthUI() {
 }
 
 
-window.loginAdmin = function() {
-    const email = document.getElementById('admin-email').value;
-    const pwd = document.getElementById('admin-pwd').value;
-    firebase.auth().signInWithEmailAndPassword(email, pwd)
-        .then(() => {
-            document.getElementById('login-modal').style.display = 'none';
-            document.getElementById('admin-email').value = '';
-            document.getElementById('admin-pwd').value = '';
-        })
-        .catch((error) => alert("Login Failed: " + error.message));
-};
-
-window.logoutAdmin = function() {
-    firebase.auth().signOut().then(() => {
-        window.location.reload(); 
-    });
-};
-
 function canManageTournaments() {
     return (typeof can === 'function') ? can('tournaments') : isAdmin;
 }
