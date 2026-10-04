@@ -50,6 +50,9 @@ body {
 }
 .app-tab.active { background: var(--uha-blue); color: white; }
 
+/* views must fill the (flex) body width or centered overflow clips their left edge */
+#view-rankings, #view-tournaments { width: 100%; }
+
 #toast {
     display: none;
     opacity: 0;
