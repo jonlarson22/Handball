@@ -169,15 +169,18 @@ function loadEditData() {
         }
     }
     
-    if(w1ID === "0" || l1ID === "0" || games.length === 0) {
-        return alert("Please select players and enter scores.");
-    }
-
     let rawWinners = activeMode === 'singles' ? [w1ID] : [w1ID, w2ID];
 	let rawLosers = activeMode === 'singles' ? [l1ID] : [l1ID, l2ID];
 
-    const winners = rawWinners.filter(id => id !== "0").map(Number);
-	const losers = rawLosers.filter(id => id !== "0").map(Number);
+    // Empty-string select values (a re-render can drop the selection) become 0
+    // via Number("") - filter those before they can reach the queue as id 0.
+    const toIds = arr => arr.filter(id => id !== "0" && id !== "" && id != null).map(Number).filter(n => n > 0);
+    const winners = toIds(rawWinners);
+	const losers = toIds(rawLosers);
+
+    if (winners.length === 0 || losers.length === 0 || games.length === 0) {
+        return alert("Please select players and enter scores.");
+    }
 
     if (isAdmin) {
         calculateAndAddMatch(activeMode, winners, losers, games);
@@ -279,15 +282,13 @@ function renderQueue() {
     let html = `<h2 style="color: #f1c40f; border-bottom: 1px solid #f1c40f; padding-bottom: 10px;">⚠️ Pending Approvals (${pending.length})</h2>`;
     
     pending.forEach((m, index) => {
-        const wNames = (m.winners || []).map(w => {
+        const nameOf = (w) => {
             const id = resolvePlayerId(w);
-            return players.find(p => p.id == id)?.name || "??";
-        }).join('/');
-        
-        const lNames = (m.losers || []).map(l => {
-            const id = resolvePlayerId(l);
-            return players.find(p => p.id == id)?.name || "??";
-        }).join('/');
+            const hit = players.find(p => p.id == id);
+            return hit ? hit.name : `Unknown (#${id})`;
+        };
+        const wNames = (m.winners || []).map(nameOf).join('/');
+        const lNames = (m.losers || []).map(nameOf).join('/');
 
         const gamesList = m.games || m.detailedGames || [];
         const scoreStr = gamesList.map(g => `${g.w}-${g.l}`).join(', ');

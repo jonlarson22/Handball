@@ -1041,7 +1041,8 @@ window.saveScore = function() {
     // Player ids ride on the team objects from draft time (no name matching).
     const teamPlayerIds = (team) => {
         if (!team || !Array.isArray(team.ids)) return [];
-        return team.ids.map(Number).filter(id => !isNaN(id));
+        // Number("") is 0 — drop it so a blank id can't pass the length guard below.
+        return team.ids.map(Number).filter(id => !isNaN(id) && id > 0);
     };
     const winnerIds = teamPlayerIds(winningTeam);
     const loserIds = teamPlayerIds(losingTeam);
