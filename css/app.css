@@ -164,6 +164,37 @@ body {
 .queue-actions .qa-review { background: #3498db; }
 .queue-actions .qa-reject { background: #e74c3c; }
 
+/* ---------- player report ---------- */
+#report-print-head { display: none; }
+.report-back { margin-bottom: 6px; }
+.report-filter-row { display: flex; gap: 10px; }
+.report-filter-row > div { flex: 1; min-width: 0; }
+#report-filters label { display: block; margin-bottom: 4px; font-weight: bold; color: var(--uha-blue); font-size: 13px; }
+.report-summary { margin-bottom: 14px; }
+.report-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
+.report-stat-grid > div { display: flex; flex-direction: column; gap: 2px; }
+.report-stat-grid b { font-size: 20px; }
+.report-stat-grid small { color: #888; font-size: 11px; }
+#report-body .panel { margin-bottom: 14px; }
+@media print {
+    .topbar, .app-tabs, .app-foot, #report-filters, .report-back, .page-head { display: none !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .screen { display: none !important; }
+    #screen-report { display: block !important; }
+    #report-print-head { display: block !important; text-align: center; margin-bottom: 12px; color: #000; }
+    #report-print-head h1 { color: #1a5fa8; font-size: 22px; margin: 0; letter-spacing: 2px; }
+    #report-print-head h2 { color: #000; font-size: 17px; margin: 4px 0; }
+    #report-print-head p { color: #555; font-size: 12px; margin: 0; }
+    #report-body, #report-body .panel { background: #fff !important; color: #000 !important; border-color: #ccc !important; }
+    #report-body .muted, #report-body small { color: #555 !important; }
+    #report-body h3 { color: #000 !important; }
+    #report-body table, #report-body td, #report-body th { color: #000 !important; }
+    #report-body thead tr { background: #eee !important; }
+    #report-body svg { background: #fff !important; border: 1px solid #ccc; }
+    #report-body svg text { fill: #333 !important; }
+    #report-body svg line { stroke: #ccc !important; }
+}
+
 /* ---------- role gating ---------- */
 .admin-only { display: none !important; }
 body.admin-mode .admin-only { display: block !important; }

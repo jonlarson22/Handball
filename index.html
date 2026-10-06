@@ -375,6 +375,41 @@
 </div></div>
     </section>
 
+    <section id="screen-report" class="screen" hidden>
+        <div id="report-print-head" hidden>
+            <h1>Utah Handball Association</h1>
+            <h2 id="report-print-title">Player Report</h2>
+            <p id="report-print-date"></p>
+        </div>
+        <button class="uha-btn-outline btn-sm report-back" onclick="closeReport()">&#8592; Rankings</button>
+        <div class="page-head"><h2 id="report-player-name">Player Report</h2></div>
+        <div class="panel" id="report-filters">
+            <div class="report-filter-row">
+                <div>
+                    <label for="report-from">From</label>
+                    <input type="date" id="report-from" class="uha-input" onchange="renderReport()">
+                </div>
+                <div>
+                    <label for="report-to">To</label>
+                    <input type="date" id="report-to" class="uha-input" onchange="renderReport()">
+                </div>
+            </div>
+            <div class="tab-bar" style="margin: 12px 0; background: #111;">
+                <div id="repMS" class="tab active-tab" onclick="setReportMode('singles')">SINGLES</div>
+                <div id="repMD" class="tab" onclick="setReportMode('doubles')">DOUBLES</div>
+                <div id="repMB" class="tab" onclick="setReportMode('both')">BOTH</div>
+            </div>
+            <div>
+                <label for="report-opp">Opponent</label>
+                <select id="report-opp" class="uha-input" onchange="renderReport()">
+                    <option value="">All opponents</option>
+                </select>
+            </div>
+            <button class="uha-btn uha-btn-blue" onclick="exportReport()" style="margin-top: 12px;">&#128196; Export / Print</button>
+        </div>
+        <div id="report-body"></div>
+    </section>
+
 </main>
 
 <footer class="app-foot">

@@ -226,12 +226,13 @@ function calculateAndAddMatch(activeMode, winners, losers, games) {
         impactMap[p.id] = -pts;
     });
 
-    history.unshift({ 
-        id: Date.now(), 
-        mode: activeMode, 
-        winners, losers,  
-        score: `${setsW}-${setsL}`, 
-        detailedGames: games,      
+    history.unshift({
+        id: Date.now(),
+        playedAt: Date.now(),
+        mode: activeMode,
+        winners, losers,
+        score: `${setsW}-${setsL}`,
+        detailedGames: games,
         impacts: impactMap,
         oldPeaks: oldPeaks
     });
@@ -604,7 +605,7 @@ function recalculateSingleMatch(m) {
     const paginatedItems = filtered.slice(start, start + rowsPerPage);
 
     body.innerHTML = paginatedItems.map((p) => `
-        <tr>
+        <tr onclick="openReport(${p.id})" style="cursor:pointer;" title="View player report">
             <td style="text-align: center; padding: 10px;">#${p.trueRank}</td>
             <td style="text-align: left; font-weight: 500; padding: 10px;">${p.name}</td>
             <td style="text-align: center; font-weight: bold; padding: 10px;">${Math.round(p[view] || 1000)}</td>
@@ -768,3 +769,189 @@ function render() {
     document.getElementById('statM').innerText = history.length;
 	if (isAdmin) renderQueue();
 }
+
+/* ================= player report ================= */
+let reportPlayerId = null;
+let reportMode = 'singles';
+
+function matchTime(m) { return (m && (m.playedAt || m.id)) || 0; }
+function fmtDate(t) {
+    if (!t) return '—';
+    const d = new Date(t);
+    return (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear();
+}
+function playerName(id) {
+    const p = players.find(x => x.id == id);
+    return p ? p.name : 'Unknown';
+}
+
+function openReport(playerId) {
+    reportPlayerId = Number(playerId);
+    reportMode = 'singles';
+    const p = players.find(x => x.id == reportPlayerId);
+    document.getElementById('report-player-name').textContent = p ? p.name + ' — Report' : 'Player Report';
+    document.getElementById('report-print-title').textContent = p ? 'Player Report — ' + p.name + ' (#' + p.id + ')' : 'Player Report';
+    document.getElementById('report-print-date').textContent = 'Generated ' + new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const opp = document.getElementById('report-opp');
+    opp.innerHTML = '<option value="">All opponents</option>' + [...players]
+        .filter(x => x.id != reportPlayerId && !x.hidden)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+    document.getElementById('report-from').value = '';
+    document.getElementById('report-to').value = '';
+    setReportModeTabs();
+    switchScreen('report');
+    document.querySelectorAll('#app-tabs .app-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.screen === 'leaderboard'));
+    renderReport();
+}
+function closeReport() { switchScreen('leaderboard'); }
+function setReportMode(mode) { reportMode = mode; setReportModeTabs(); renderReport(); }
+function setReportModeTabs() {
+    [['singles', 'repMS'], ['doubles', 'repMD'], ['both', 'repMB']].forEach(([k, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active-tab', k === reportMode);
+    });
+}
+function playerMatches(pid, mode) {
+    return history
+        .filter(m => (m.mode || 'singles') === mode)
+        .map(m => ({ m, t: matchTime(m) }))
+        .filter(x => [...(x.m.winners || []), ...(x.m.losers || [])].some(id => id == pid))
+        .sort((a, b) => a.t - b.t);
+}
+function playerTrajectory(pid, mode, fromT, toT) {
+    const p = players.find(x => x.id == pid);
+    const cur = p ? Number(p[mode] || 1000) : 1000;
+    let ms = playerMatches(pid, mode);
+    if (fromT) ms = ms.filter(x => x.t >= fromT);
+    if (toT) ms = ms.filter(x => x.t <= toT + 86399999);
+    // walk back from current ELO — no assumed 1000 anchor before the first match
+    const totalShift = ms.reduce((s, x) => s + (Number(x.m.impacts && x.m.impacts[pid]) || 0), 0);
+    let elo = Math.round((cur - totalShift) * 10) / 10;
+    const pts = [];
+    if (ms.length) pts.push({ t: ms[0].t, elo });
+    ms.forEach(x => {
+        elo = Math.round((elo + (Number(x.m.impacts && x.m.impacts[pid]) || 0)) * 10) / 10;
+        pts.push({ t: x.t, elo, m: x.m });
+    });
+    return { pts, ms: ms.map(x => x.m), current: cur };
+}
+function eloGraphSVG(seriesList) {
+    const W = 620, H = 240, PL = 46, PR = 12, PT = 14, PB = 30;
+    const allPts = seriesList.reduce((a, s) => a.concat(s.pts), []);
+    if (!allPts.length) return '<p class="muted" style="text-align:center;">No matches in this range.</p>';
+    let minE = Math.min(...allPts.map(p => p.elo));
+    let maxE = Math.max(...allPts.map(p => p.elo));
+    if (minE === maxE) { minE -= 10; maxE += 10; }
+    const pad = (maxE - minE) * 0.15 || 10;
+    minE -= pad; maxE += pad;
+    const minT = Math.min(...allPts.map(p => p.t));
+    const maxT = Math.max(...allPts.map(p => p.t));
+    const X = t => PL + (maxT === minT ? (W - PL - PR) / 2 : (t - minT) / (maxT - minT) * (W - PL - PR));
+    const Y = e => PT + (1 - (e - minE) / (maxE - minE)) * (H - PT - PB);
+    let g = '';
+    for (let i = 0; i <= 4; i++) {
+        const e = minE + (maxE - minE) * i / 4;
+        const y = Y(e).toFixed(1);
+        g += `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#333" stroke-width="1"/><text x="${PL - 6}" y="${+y + 4}" fill="#888" font-size="11" text-anchor="end">${Math.round(e)}</text>`;
+    }
+    const paths = seriesList.map(s => {
+        if (!s.pts.length) return '';
+        const d = s.pts.map((p, i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ',' + Y(p.elo).toFixed(1)).join(' ');
+        const dots = s.pts.filter(p => p.m).map(p =>
+            `<circle cx="${X(p.t).toFixed(1)}" cy="${Y(p.elo).toFixed(1)}" r="3.5" fill="${s.color}"/>`).join('');
+        return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5"/>${dots}`;
+    }).join('');
+    const legend = seriesList.length > 1
+        ? `<div style="margin-bottom:6px;font-size:13px;">` + seriesList.map(s =>
+            `<span style="color:${s.color};">&#9679; ${s.label}</span>`).join('&nbsp;&nbsp;') + `</div>` : '';
+    const dates = `<text x="${PL}" y="${H - 8}" fill="#888" font-size="11">${fmtDate(minT)}</text>` +
+        `<text x="${W - PR}" y="${H - 8}" fill="#888" font-size="11" text-anchor="end">${fmtDate(maxT)}</text>`;
+    return `${legend}<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;background:#141414;border-radius:8px;" role="img">${g}${paths}${dates}</svg>`;
+}
+function renderReport() {
+    const body = document.getElementById('report-body');
+    if (!body || reportPlayerId == null) return;
+    const p = players.find(x => x.id == reportPlayerId);
+    if (!p) { body.innerHTML = '<p class="muted">Player not found.</p>'; return; }
+
+    const fromV = document.getElementById('report-from').value;
+    const toV = document.getElementById('report-to').value;
+    const fromT = fromV ? new Date(fromV + 'T00:00:00').getTime() : 0;
+    const toT = toV ? new Date(toV + 'T00:00:00').getTime() : 0;
+    const oppId = document.getElementById('report-opp').value;
+    const oppName = oppId ? playerName(oppId) : '';
+    const modes = reportMode === 'both' ? ['singles', 'doubles'] : [reportMode];
+
+    let summaryHtml = '';
+    const seriesList = [];
+    let allMs = [];
+    modes.forEach(mode => {
+        const { pts, ms, current } = playerTrajectory(reportPlayerId, mode, fromT, toT);
+        const elos = pts.map(q => q.elo);
+        const mn = elos.length ? Math.min(...elos) : current;
+        const mx = elos.length ? Math.max(...elos) : current;
+        const mnPt = pts.find(q => q.elo === mn);
+        const mxPt = pts.find(q => q.elo === mx);
+        let fms = ms;
+        if (oppId) fms = fms.filter(m => [...(m.winners || []), ...(m.losers || [])].some(id => id == oppId));
+        const w = fms.filter(m => (m.winners || []).some(id => id == reportPlayerId)).length;
+        const l = fms.length - w;
+        const color = mode === 'singles' ? '#3498db' : '#f1c40f';
+        const label = mode[0].toUpperCase() + mode.slice(1);
+        seriesList.push({ label, color, pts });
+        fms.forEach(m => allMs.push({ m, mode }));
+        summaryHtml += `
+        <div class="panel report-summary">
+            <h3 style="color:${color};margin-top:0;">${label}</h3>
+            <div class="report-stat-grid">
+                <div><span class="muted">Current</span><b>${Math.round(current)}</b></div>
+                <div><span class="muted">Peak</span><b>${Math.round(mx)}</b><small>${mxPt ? fmtDate(mxPt.t) : ''}</small></div>
+                <div><span class="muted">Low</span><b>${Math.round(mn)}</b><small>${mnPt ? fmtDate(mnPt.t) : ''}</small></div>
+                <div><span class="muted">Record${oppName ? ' vs ' + oppName : ''}</span><b>${w}W – ${l}L</b></div>
+            </div>
+        </div>`;
+    });
+
+    allMs.sort((a, b) => matchTime(b.m) - matchTime(a.m));
+    const rows = allMs.slice(0, 100).map(({ m, mode }) => {
+        const won = (m.winners || []).some(id => id == reportPlayerId);
+        const isD = mode === 'doubles';
+        const mySide = (won ? m.winners : m.losers) || [];
+        const opSide = (won ? m.losers : m.winners) || [];
+        const partner = isD ? mySide.filter(id => id != reportPlayerId).map(playerName).join(', ') : '';
+        const opps = opSide.map(playerName).join(' / ');
+        const shift = Number(m.impacts && m.impacts[reportPlayerId]) || 0;
+        const scores = (m.detailedGames || []).map(g => g.w + '-' + g.l).join(', ');
+        return `<tr>
+            <td style="white-space:nowrap;font-size:11px;">${fmtDate(matchTime(m))}</td>
+            <td style="text-align:center;color:${won ? '#2ecc71' : '#e74c3c'};font-weight:bold;">${won ? 'W' : 'L'}</td>
+            <td style="font-size:11px;">${opps}${partner ? `<div class="muted">w/ ${partner}</div>` : ''}<div class="muted">${mode}</div></td>
+            <td style="text-align:center;font-size:11px;">${m.score || ''}${scores ? `<div class="muted">(${scores})</div>` : ''}</td>
+            <td style="text-align:center;" class="${shift >= 0 ? 'shift-plus' : 'shift-minus'}">${shift > 0 ? '+' : ''}${shift}</td>
+        </tr>`;
+    }).join('');
+
+    body.innerHTML = summaryHtml + `
+        <div class="panel">
+            <h3 style="margin-top:0;">ELO Over Time</h3>
+            ${eloGraphSVG(seriesList)}
+        </div>
+        <div class="panel">
+            <h3 style="margin-top:0;">Matches (${allMs.length}${allMs.length > 100 ? ', showing 100' : ''})</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr style="background:#222;">
+                    <th style="padding:8px;text-align:left;">Date</th>
+                    <th style="padding:8px;">W/L</th>
+                    <th style="padding:8px;text-align:left;">Opponents</th>
+                    <th style="padding:8px;">Score</th>
+                    <th style="padding:8px;">ELO</th>
+                </tr></thead>
+                <tbody>${rows || '<tr><td colspan="5" class="muted" style="text-align:center;padding:16px;">No matches in this range.</td></tr>'}</tbody>
+            </table>
+            </div>
+        </div>`;
+}
+function exportReport() { window.print(); }
