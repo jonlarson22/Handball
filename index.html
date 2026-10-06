@@ -37,6 +37,7 @@
     <div id="vD" class="tab" onclick="setView('doubles')">DOUBLES</div>
 </div>
 
+<div class="leaderboard-box">
 <table id="leaderboardTable" style="width: 100%; border-collapse: collapse;">
     <thead>
         <tr style="background: #222;">
@@ -48,6 +49,7 @@
     </thead>
     <tbody id="leaderboardBody"></tbody>
 </table>
+</div>
 
 <div id="paginationControls" style="display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 10px;"></div>
     </section>
@@ -113,6 +115,26 @@
     </section>
 
     <section id="screen-history" class="screen" hidden>
+<h2>Match History</h2>
+<input type="text" id="historySearch" class="search-input" placeholder="&#128269; Search player name..." onkeyup="render()">
+<div class="tab-bar" style="margin-bottom: 15px; background: #111;">
+    <div id="histTS" class="tab active-tab" onclick="setHistoryMode('singles')">SINGLES</div>
+    <div id="histTD" class="tab" onclick="setHistoryMode('doubles')">DOUBLES</div>
+</div>
+    <div class="history-box">
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th style="width:40%; text-align: center;">Players</th>
+                    <th style="width:22%; text-align: center;">Score</th>
+                    <th style="width:28%; text-align: center;">ELO Shifts</th>
+                    <th class="admin-only" style="width:10%; text-align: center;">Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
 <h2>Head-to-Head</h2>
     <div class="h2h-box">
         <div style="display:flex; gap:10px; margin-bottom:15px;">
@@ -136,32 +158,16 @@
             <div id="h2hRecent" class="h2h-recent-list"></div>
         </div>
     </div>
-
-<h2>Match History</h2>
-    <div class="history-box">
-        <table id="historyTable">
-            <thead>
-                <tr>
-                    <th style="width:10%; text-align: center;">Match Type</th>
-                    <th style="width:27.5%; text-align: center;">Players</th>
-                    <th style="width:20%; text-align: center;">Score</th>
-                    <th style="width:32.5%; text-align: center;">ELO Shifts</th>
-                    <th class="admin-only" style="width:10%; text-align: center;">Action</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-	<h2 class="admin-only">Admin Panel</h2>
     </section>
 
     <section id="screen-admin" class="screen" hidden>
         <div class="page-head"><h2>Admin</h2></div>
         <div class="panel" id="admin-login-panel" hidden>
+            <p class="muted" style="margin-top:0;">Club organizers: create an account, then tap <b>Request Admin Access</b>.</p>
             <input type="email" id="admin-email" class="uha-input" placeholder="Email" autocomplete="email">
             <input type="password" id="admin-pwd" class="uha-input" placeholder="Password" autocomplete="current-password">
-            <button class="uha-btn uha-btn-blue" onclick="loginAdmin()">Login</button>
+            <button class="uha-btn uha-btn-blue" id="admin-auth-btn" onclick="loginAdmin()">Login</button>
+            <p class="muted" style="text-align:center; margin: 10px 0 0;"><a href="#" id="auth-toggle-link" onclick="toggleAuthMode(event)" style="color: var(--uha-blue);">New here? Create an account</a></p>
         </div>
         <div id="admin-user-row" class="admin-user-row" hidden>
             <span class="muted">Logged in as <b id="admin-user-email"></b></span>
@@ -345,6 +351,11 @@
         <p style="font-size: 11px; color: #666; margin: 0;">
             System Status: <span id="statP">0</span> Players | <span id="statM">0</span> Matches
         </p>
+    </div>
+
+    <div id="wipe-box" style="margin-top: 20px; border-top: 1px solid #e74c3c; padding-top: 15px;" hidden>
+        <button onclick="wipeTestData()" style="background:#e74c3c; color: white; font-weight: bold; width: 100%;">🗑 Wipe Test Data (fresh start)</button>
+        <p class="muted" style="font-size: 11px; text-align: center;">Clears players, pending, history &amp; tournaments. Keeps admins and access requests.</p>
     </div>
 </div>
 

@@ -135,6 +135,35 @@ body {
 }
 .admin-subtab.active { background: var(--uha-blue); color: white; }
 
+/* ---------- review queue (stacked: matchup, scores, buttons) ---------- */
+.queue-item {
+    background: #1a1a1a;
+    border-left: 5px solid #f1c40f;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+.queue-matchup { font-size: 14px; font-weight: bold; overflow-wrap: break-word; }
+.queue-matchup .vs { color: #888; font-weight: normal; }
+.queue-scores { font-size: 12px; color: #f1c40f; margin-top: 6px; overflow-wrap: break-word; }
+.queue-scores span { color: #666; }
+.queue-actions { display: flex; gap: 8px; margin-top: 12px; }
+.queue-actions button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 6px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    color: white;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.queue-actions .qa-approve { background: #2ecc71; }
+.queue-actions .qa-review { background: #3498db; }
+.queue-actions .qa-reject { background: #e74c3c; }
+
 /* ---------- role gating ---------- */
 .admin-only { display: none !important; }
 body.admin-mode .admin-only { display: block !important; }
@@ -297,7 +326,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
 }
 :is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) select,
 :is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) input,
-:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) button {
+:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) button:not(.admin-subtab):not(.tab):not(.qa-approve):not(.qa-review):not(.qa-reject) {
     padding: 12px;
     border-radius: 6px;
     border: 1px solid #444;
@@ -376,7 +405,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     background: #1a1a1a;
     padding: 16px;
     border-radius: 12px;
-    border: 1px solid var(--uha-blue);
+    border: 1px solid var(--border-color);
     margin-bottom: 24px;
 }
 :is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) .h2h-grid {
@@ -418,6 +447,12 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background: #1a1a1a;
+}
+:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) .leaderboard-box {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: #1a1a1a;
+    overflow-x: auto;
 }
 :is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) .undo-btn {
     background: var(--red-lose);

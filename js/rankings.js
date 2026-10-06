@@ -90,16 +90,18 @@ function showToast(message, isError = false) {
 function addPlayer() {
     const n = document.getElementById('addN').value.trim();
     const isMem = document.getElementById('addMember').checked;
-    if(n) { 
+    if(!n) return;
+    getNextPlayerId().then(id => {
         players.push({
-            id: Date.now(), name: n, singles: 1000, doubles: 1000, 
-            baseS: 1000, baseD: 1000, peakS: 1000, peakD: 1000, 
+            id: id, name: n, singles: 1000, doubles: 1000,
+            baseS: 1000, baseD: 1000, peakS: 1000, peakD: 1000,
             active: true, isMember: isMem
-        }); 
-        save(); 
-        document.getElementById('addN').value = ''; 
-        filterTable(); 
-    }
+        });
+        save();
+        document.getElementById('addN').value = '';
+        filterTable();
+        if (typeof showToast === 'function') showToast(`Player added — ID #${id}`);
+    }).catch(e => alert('Could not assign a player ID: ' + e.message));
 }
 
 function loadEditData() {
@@ -251,6 +253,16 @@ function resolvePlayerId(input) {
     return 0;
 }
 
+let historyMode = 'singles';
+function setHistoryMode(mode) {
+    historyMode = mode;
+    const ts = document.getElementById('histTS');
+    const td = document.getElementById('histTD');
+    if (ts) ts.classList.toggle('active-tab', mode === 'singles');
+    if (td) td.classList.toggle('active-tab', mode === 'doubles');
+    render();
+}
+
 function renderQueue() {
     const queueEl = document.getElementById('adminQueue');
     if (!queueEl) return;
@@ -276,15 +288,13 @@ function renderQueue() {
         const displayMode = (m.mode || 'singles').toUpperCase();
         
         html += `
-    <div style="background: #1a1a1a; border-left: 5px solid #f1c40f; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px;">
-        <div>
-            <div style="font-size: 14px; font-weight: bold;">${wNames} <span style="color:#888; font-weight:normal;">def.</span> ${lNames}</div>
-            <div style="font-size: 12px; color: #f1c40f; margin-top: 4px;">Scores: ${scoreStr} | <span style="color:#666">${displayMode}</span></div>
-        </div>
-        <div style="display: flex; gap: 8px;">
-            <button onclick="approveMatch(${index})" style="background: #2ecc71; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-weight: bold;">APPROVE</button>
-            <button onclick="reviewSub(${index})" style="background: #3498db; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px;">REVIEW/EDIT</button>
-            <button onclick="rejectSub(${index})" style="background: #e74c3c; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px;">REJECT</button>
+    <div class="queue-item">
+        <div class="queue-matchup">${wNames} <span class="vs">def.</span> ${lNames}</div>
+        <div class="queue-scores">Scores: ${scoreStr} | <span>${displayMode}</span></div>
+        <div class="queue-actions">
+            <button class="qa-approve" onclick="approveMatch(${index})">APPROVE</button>
+            <button class="qa-review" onclick="reviewSub(${index})">REVIEW/EDIT</button>
+            <button class="qa-reject" onclick="rejectSub(${index})">REJECT</button>
         </div>
     </div>`;
     });
@@ -456,7 +466,7 @@ function runH2H() {
 function exportFullData() {
     const now = new Date();
     const fileName = `handball_backup_${now.toISOString().split('T')[0]}.json`;
-    const blob = new Blob([JSON.stringify({ players, history, pending })], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ players, history, pending, meta: { nextPlayerId: (players || []).reduce((m, p) => Math.max(m, Number(p.id) || 0), 0) + 1 } })], { type: 'application/json' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = fileName;
@@ -473,10 +483,11 @@ function importFullData(e) {
     reader.onload = (ev) => {
         try {
             const data = JSON.parse(ev.target.result);
-            players = normalizePlayers(data.players); 
+            players = normalizePlayers(data.players);
             history = data.history || [];
             pending = data.pending || [];
-            save(); 
+            save();
+            if (typeof syncPlayerIdCounter === 'function') syncPlayerIdCounter(players);
             showToast("Import complete!");
         } catch(err) { alert("Invalid file."); }
     };
@@ -678,7 +689,21 @@ function render() {
 
     const historyBody = document.querySelector('#historyTable tbody');
     if (historyBody) {
-        historyBody.innerHTML = history.slice(0, 15).map(m => {
+        const hq = ((document.getElementById('historySearch') || {}).value || '').trim().toLowerCase();
+        const hlist = history
+            .filter(m => (m.mode || 'singles') === historyMode)
+            .filter(m => {
+                if (!hq) return true;
+                const names = [...(m.winners || []), ...(m.losers || [])].map(id => {
+                    const p = players.find(x => x.id == id);
+                    return p ? p.name.toLowerCase() : '';
+                }).join(' ');
+                return names.includes(hq);
+            });
+        if (!hlist.length) {
+            historyBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;" class="muted">No ${historyMode} matches found.</td></tr>`;
+        } else {
+        historyBody.innerHTML = hlist.slice(0, 15).map(m => {
             const isDoubles = m.mode === 'doubles';
             
             const winNames = (m.winners || []).map(id => {
@@ -717,23 +742,13 @@ function render() {
                 }
             }
 
-            let shiftHTML = "";
-            if (isDoubles && plusShifts.length > 0) {
-                shiftHTML = `
-                    <div style="line-height: 1.3;">
-                        <div>${plusShifts.join(', ')}</div>
-                        <div style="border-top: 1px solid #333; margin-top: 3px; padding-top: 3px;">${minusShifts.join(', ')}</div>
-                    </div>`;
-            } else {
-                shiftHTML = plusShifts.concat(minusShifts).join(', ');
-            }
+            let shiftHTML = plusShifts.concat(minusShifts).join('<br>');
 
             const detailedScore = m.detailedGames ? 
                 `<div style="font-size:10px; color:#888;">(${m.detailedGames.map(g => `${g.w}-${g.l}`).join(', ')})</div>` : 
                 '';
 
             return `<tr>
-                <td>${m.mode ? m.mode.toUpperCase() : '---'}</td>
                 <td style="font-size:11px">${matchupHTML}</td>
                 <td style="text-align:center;">
                     <div style="font-weight:bold;">${m.score || '0-0'}</div>
@@ -746,6 +761,7 @@ function render() {
                 </td>
             </tr>`;
         }).join('');
+        }
     }
     
     document.getElementById('statP').innerText = players.length;

@@ -195,22 +195,22 @@ document.getElementById('btn-add-player').addEventListener('click', () => {
         return alert("Player already exists in the database.");
     }
 
-    const newPlayer = {
-        id: Date.now(),
-        name: nameStr,
-        singles: singlesVal,
-        doubles: doublesVal,
-        baseS: singlesVal,
-        baseD: doublesVal,
-        peakS: singlesVal,
-        peakD: doublesVal,
-        active: true,
-        isMember: isMember
-    };
+    getNextPlayerId().then(id => {
+        const newPlayer = {
+            id: id,
+            name: nameStr,
+            singles: singlesVal,
+            doubles: doublesVal,
+            baseS: singlesVal,
+            baseD: doublesVal,
+            peakS: singlesVal,
+            peakD: doublesVal,
+            active: true,
+            isMember: isMember
+        };
 
-    allPlayers.push(newPlayer);
-    db.ref('players').set(allPlayers)
-        .then(() => {
+        allPlayers.push(newPlayer);
+        return db.ref('players').set(allPlayers).then(() => {
             document.getElementById('new-player-name').value = '';
             document.getElementById('new-player-singles').value = '1000';
             document.getElementById('new-player-doubles').value = '1000';
@@ -218,9 +218,10 @@ document.getElementById('btn-add-player').addEventListener('click', () => {
 
             const searchInput = document.getElementById('player-search');
             if (searchInput) searchInput.value = nameStr;
-            refreshRosterFromDB(); 
-        })
-        .catch(e => alert("Error adding player: " + e.message));
+            refreshRosterFromDB();
+            if (typeof showToast === 'function') showToast(`Player added — ID #${id}`);
+        });
+    }).catch(e => alert("Error adding player: " + e.message));
 });
 
 document.getElementById('btn-lock-division').addEventListener('click', () => {

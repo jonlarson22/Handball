@@ -34,7 +34,26 @@ function onPlayersUpdate(fn) { playersSubscribers.push(fn); }
 db.ref('players').on('value', (snap) => {
     clubPlayers = normalizePlayers(snap.val());
     playersSubscribers.forEach(fn => { try { fn(clubPlayers); } catch (e) { console.error('players subscriber failed:', e); } });
+    syncPlayerIdCounter(clubPlayers);
 });
+
+/* ---------- sequential player IDs (source of truth for renames) ---------- */
+function getNextPlayerId() {
+    return db.ref('meta/nextPlayerId').transaction(cur => (cur || 0) + 1).then(res => {
+        const id = res && res.snapshot ? res.snapshot.val() : null;
+        if (!id || id < 1) throw new Error('id-txn-failed');
+        return id;
+    }).catch(() => {
+        // offline fallback: max local id + 1
+        const all = (typeof clubPlayers !== 'undefined' ? clubPlayers : []).concat(typeof players !== 'undefined' ? players : []);
+        return all.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0) + 1;
+    });
+}
+function syncPlayerIdCounter(list) {
+    const maxId = (list || []).reduce((m, p) => Math.max(m, Number(p.id) || 0), 0);
+    if (maxId < 1) return;
+    db.ref('meta/nextPlayerId').transaction(cur => Math.max(cur || 0, maxId)).catch(() => {});
+}
 
 /* ---------- roles & auth ----------
    Roles live in /admins/{uid} = { email, role, createdAt }.
@@ -117,6 +136,8 @@ function applyAdminTabVisibility() {
 
     const managePanel = document.getElementById('roles-manage-panel');
     if (managePanel) managePanel.hidden = !!noRole;
+    const wipeBox = document.getElementById('wipe-box');
+    if (wipeBox) wipeBox.hidden = !(isAdmin && userRole === 'owner');
     const reqPanel = document.getElementById('request-access-panel');
     if (reqPanel) reqPanel.hidden = !noRole;
 }
@@ -210,6 +231,41 @@ function loginAdmin() {
     firebase.auth().signInWithEmailAndPassword(email, pwd)
         .then(() => { if (pwdEl) pwdEl.value = ''; })
         .catch((error) => alert('Login failed: ' + error.message));
+}
+let authMode = 'login';
+function toggleAuthMode(e) {
+    if (e) e.preventDefault();
+    authMode = authMode === 'login' ? 'signup' : 'login';
+    const btn = document.getElementById('admin-auth-btn');
+    const link = document.getElementById('auth-toggle-link');
+    if (btn) {
+        btn.textContent = authMode === 'login' ? 'Login' : 'Create Account';
+        btn.onclick = authMode === 'login' ? loginAdmin : signupAdmin;
+    }
+    if (link) link.textContent = authMode === 'login' ? 'New here? Create an account' : 'Already have an account? Log in';
+}
+function signupAdmin() {
+    const emailEl = document.getElementById('admin-email');
+    const pwdEl = document.getElementById('admin-pwd');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const pwd = pwdEl ? pwdEl.value : '';
+    if (!email || pwd.length < 6) { alert('Enter an email and a password (6+ characters).'); return; }
+    firebase.auth().createUserWithEmailAndPassword(email, pwd)
+        .then(() => {
+            if (pwdEl) pwdEl.value = '';
+            if (typeof showToast === 'function') showToast('Account created — tap Request Admin Access.');
+        })
+        .catch((error) => alert('Sign-up failed: ' + error.message));
+}
+function wipeTestData() {
+    if (!can('data')) { alert('Owner only.'); return; }
+    if (!confirm('WIPE ALL TEST DATA?\n\nThis clears players, pending approvals, match history and tournaments. Admins and access requests are kept. This cannot be undone.')) return;
+    if (!confirm('Last chance — really wipe everything and start fresh?')) return;
+    const wipes = ['players', 'pending', 'history', 'tournaments', 'meta'].map(k => db.ref(k).remove());
+    Promise.all(wipes).then(() => {
+        if (typeof showToast === 'function') showToast('Database wiped — fresh start. Player IDs restart at #1.');
+        location.reload();
+    }).catch(e => alert('Wipe failed: ' + e.message));
 }
 function logoutUser() {
     firebase.auth().signOut().catch(e => alert('Logout failed: ' + e.message));
