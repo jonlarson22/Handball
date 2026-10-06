@@ -700,7 +700,8 @@ function renderTournamentView() {
     let html = '';
     lockedDivisions.forEach((div, divIdx) => {
         let formatLabel = div.format.includes('elim') ? 'Knockout' : 'Round Robin';
-        html += `<div id="division-${divIdx}" class="section-title" style="margin-top: 40px; border-top: 1px solid #444; padding-top:20px;">${div.name} (${div.mode} - ${formatLabel})</div>`;
+        const modeLabel = div.mode ? div.mode.charAt(0).toUpperCase() + div.mode.slice(1) : '';
+        html += `<div id="division-${divIdx}" class="section-title" style="margin-top: 40px; border-top: 1px solid #444; padding-top:20px;"><div>${div.name}</div><div class="division-sub">${modeLabel} &middot; ${formatLabel}</div></div>`;
         
         if (div.format === 'single_elim' || div.format === 'double_elim') {
 

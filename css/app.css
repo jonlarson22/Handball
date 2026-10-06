@@ -524,6 +524,13 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 8px;
 }
+:is(#screen-tournaments, #admin-tournaments) .division-sub {
+    font-size: 12px;
+    font-weight: normal;
+    color: #888;
+    text-transform: none;
+    margin-top: 3px;
+}
 :is(#screen-tournaments, #admin-tournaments) .setup-columns {
     display: flex;
     flex-direction: column;
