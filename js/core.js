@@ -97,17 +97,30 @@ function switchScreen(name, push = true) {
     });
     window.scrollTo(0, 0);
     try {
-        if (push) history.pushState({ screen: name }, '');
-        else history.replaceState({ screen: name }, '');
+        if (push === true) history.pushState({ screen: name }, '');
+        else if (push === false) history.replaceState({ screen: name }, '');
+        // push === 'none': leave history untouched
     } catch (e) {}
 }
 document.querySelectorAll('#app-tabs .app-tab').forEach(t =>
     t.addEventListener('click', () => switchScreen(t.dataset.screen)));
 
 // Android system back button: walk back through screens / close overlays
-// instead of exiting the app. Falls back to the main page when there's
-// no app history left.
+// instead of exiting the app. A spare marker entry sits above the root so
+// back never silently closes the app: at the bottom of the history it lands
+// on the main page, and a second back press within a few seconds exits.
+let backExitArmed = false;
+let backExitTimer = null;
+let appExiting = false;
+function disarmBackExit() {
+    backExitArmed = false;
+    if (backExitTimer) { clearTimeout(backExitTimer); backExitTimer = null; }
+}
+function pushSpare() {
+    try { history.pushState({ spare: true }, ''); } catch (e) {}
+}
 window.addEventListener('popstate', (e) => {
+    if (appExiting) return;
     const lm = document.getElementById('live-modal');
     const sm = document.getElementById('score-modal');
     const liveOpen = lm && lm.style.display !== 'none';
@@ -119,11 +132,38 @@ window.addEventListener('popstate', (e) => {
         try { history.pushState({ screen: currentScreenName() }, ''); } catch (err) {}
         return;
     }
-    const target = (e.state && e.state.screen) || 'leaderboard';
+    const st = e.state || {};
+    if (st.root) {
+        // bottom of app history: default to the main page
+        if (backExitArmed) {
+            appExiting = true;
+            disarmBackExit();
+            history.back(); // pop the root entry — the app closes
+        } else {
+            backExitArmed = true;
+            pushSpare();
+            if (typeof showToast === 'function') showToast('Press back again to exit');
+            if (backExitTimer) clearTimeout(backExitTimer);
+            backExitTimer = setTimeout(disarmBackExit, 2500);
+        }
+        return;
+    }
+    if (st.spare) {
+        // landed on the spare: we're at the bottom of app history — main page.
+        // (the spare is already the top entry, so don't push another)
+        disarmBackExit();
+        switchScreen('leaderboard', 'none');
+        return;
+    }
+    disarmBackExit();
+    const target = st.screen || 'leaderboard';
     if (document.getElementById('screen-' + target)) switchScreen(target, false);
     else switchScreen('leaderboard', false);
 });
-try { history.replaceState({ screen: 'leaderboard' }, ''); } catch (e) {}
+try {
+    history.replaceState({ screen: 'leaderboard', root: true }, '');
+    history.pushState({ spare: true }, '');
+} catch (e) {}
 
 let activeAdminTab = 'review';
 const ADMIN_TABS = ['review', 'players', 'tournaments', 'data', 'roles'];
