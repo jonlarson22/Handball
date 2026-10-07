@@ -231,7 +231,7 @@ document.getElementById('btn-add-player').addEventListener('click', () => {
 
 document.getElementById('btn-lock-division').addEventListener('click', () => {
     const nameInput = document.getElementById('division-name');
-    const divName = nameInput ? nameInput.value : "Untitled Division";
+    const divName = nameInput ? nameInput.value : "Untitled Event";
     const format = document.getElementById('division-format').value;
     const finalRuleEl = document.getElementById('double-elim-final');
     const finalRule = finalRuleEl ? finalRuleEl.value : 'true_double';
@@ -241,7 +241,7 @@ document.getElementById('btn-lock-division').addEventListener('click', () => {
     const hasThirdPlace = (singleThird && singleThird.checked) || (multiThird && multiThird.checked);
     
     const participantElements = document.querySelectorAll('.singles-slot, .team-slot');
-    if (participantElements.length < 2) return alert("Need at least 2 participants to lock a division.");
+    if (participantElements.length < 2) return alert("Need at least 2 participants to lock an event.");
 
    const participants = Array.from(participantElements).map(el => {
         let ids = [];
@@ -256,7 +256,7 @@ document.getElementById('btn-lock-division').addEventListener('click', () => {
     });
 
     lockedDivisions.push({
-        name: divName || "Untitled Division",
+        name: divName || "Untitled Event",
         format: format,
         mode: isDoublesMode ? "Doubles" : "Singles",
         grandFinalRule: finalRule,
@@ -1335,7 +1335,7 @@ function loadTournamentData(path) {
 
 window.editActiveTournament = function() {
     if (!canManageTournaments()) return;
-    if (!confirm("This will pull the current live tournament back into the setup area. You can then 'Unlock' divisions to edit players. Ready?")) return;
+    if (!confirm("This will pull the current live tournament back into the setup area. You can then 'Unlock' events to edit players. Ready?")) return;
 
     db.ref('tournaments/active').once('value').then((snapshot) => {
         const data = snapshot.val();
@@ -1358,7 +1358,7 @@ window.editActiveTournament = function() {
         renderLockedDivisions();
         renderRoster();
         
-        alert("Setup reloaded. Use the 'Unlock' buttons below to make changes to specific divisions.");
+        alert("Setup reloaded. Use the 'Unlock' buttons below to make changes to specific events.");
     });
 };
 
