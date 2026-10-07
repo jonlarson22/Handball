@@ -229,6 +229,61 @@ document.getElementById('btn-add-player').addEventListener('click', () => {
     }).catch(e => alert("Error adding player: " + e.message));
 });
 
+/* ============ manual seeding ============ */
+let manualSeeds = []; // participant names in seed order
+
+window.toggleSeedingOptions = function() {
+    const mode = document.getElementById('seeding-mode').value;
+    document.getElementById('manual-seeding-box').style.display = mode === 'manual' ? 'block' : 'none';
+    if (mode === 'manual') renderSeedPicker();
+};
+
+function draftParticipantNames() {
+    return Array.from(document.querySelectorAll('.singles-slot, .team-slot'))
+        .map(el => el.dataset.finalName).filter(Boolean);
+}
+
+function renderSeedPicker() {
+    const names = draftParticipantNames();
+    manualSeeds = manualSeeds.filter(n => names.includes(n));
+    const listEl = document.getElementById('seed-list');
+    const poolEl = document.getElementById('seed-pool');
+    listEl.innerHTML = manualSeeds.length
+        ? manualSeeds.map((n, i) => `
+            <div style="display:flex; align-items:center; gap:6px; background:#1a1a1a; padding:6px 8px; border-radius:4px; margin-bottom:4px;">
+                <span style="background:var(--uha-gold); color:#000; font-weight:bold; border-radius:4px; padding:2px 8px; font-size:12px;">${i + 1}</span>
+                <span style="flex:1;">${n}</span>
+                <button onclick="moveSeed(${i}, -1)" style="width:auto; padding:2px 8px; font-size:12px;" ${i === 0 ? 'disabled style="width:auto; padding:2px 8px; font-size:12px; opacity:0.3;"' : ''}>▲</button>
+                <button onclick="moveSeed(${i}, 1)" style="width:auto; padding:2px 8px; font-size:12px;" ${i === manualSeeds.length - 1 ? 'disabled style="width:auto; padding:2px 8px; font-size:12px; opacity:0.3;"' : ''}>▼</button>
+                <button onclick="removeSeed(${i})" style="width:auto; padding:2px 8px; font-size:12px; background:#c0392b;">✕</button>
+            </div>`).join('')
+        : '<div style="font-size:12px; color:var(--text-muted);">No seeds picked yet.</div>';
+    const unseeded = names.filter(n => !manualSeeds.includes(n));
+    poolEl.innerHTML = unseeded.map(n =>
+        `<button onclick="addSeed('${n.replace(/'/g, "\\'")}')" style="width:auto; padding:6px 10px; font-size:12px;">+ ${n}</button>`
+    ).join('') || '<span style="font-size:12px; color:var(--text-muted);">Everyone is seeded.</span>';
+}
+
+window.addSeed = function(name) { manualSeeds.push(name); renderSeedPicker(); };
+window.removeSeed = function(i) { manualSeeds.splice(i, 1); renderSeedPicker(); };
+window.moveSeed = function(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= manualSeeds.length) return;
+    [manualSeeds[i], manualSeeds[j]] = [manualSeeds[j], manualSeeds[i]];
+    renderSeedPicker();
+};
+
+// keep the seed pool in sync as players are drafted/removed
+if (typeof MutationObserver !== 'undefined') {
+    const _draftArea = document.getElementById('team-draft-area');
+    if (_draftArea) new MutationObserver(() => {
+        if (document.getElementById('seeding-mode').value === 'manual' &&
+            document.getElementById('manual-seeding-box').style.display !== 'none') {
+            renderSeedPicker();
+        }
+    }).observe(_draftArea, { childList: true, subtree: true });
+}
+
 document.getElementById('btn-lock-division').addEventListener('click', () => {
     const nameInput = document.getElementById('division-name');
     const divName = nameInput ? nameInput.value : "Untitled Event";
@@ -255,6 +310,7 @@ document.getElementById('btn-lock-division').addEventListener('click', () => {
         };
     });
 
+    const seedingMode = document.getElementById('seeding-mode').value;
     lockedDivisions.push({
         name: divName || "Untitled Event",
         format: format,
@@ -262,8 +318,11 @@ document.getElementById('btn-lock-division').addEventListener('click', () => {
         grandFinalRule: finalRule,
         hasThirdPlaceMatch: hasThirdPlace,
         participants: participants,
-        bracket: [] 
+        seeding: seedingMode,
+        seedOrder: seedingMode === 'manual' ? [...manualSeeds] : [],
+        bracket: []
     });
+    manualSeeds = [];
 
     renderLockedDivisions();
     document.getElementById('team-draft-area').innerHTML = '';
@@ -339,6 +398,38 @@ function buildSeededMatchups(teams) {
     return matchups;
 }
 
+/* Order participants for bracket building:
+   elo    -> sort by ELO desc (classic seeding)
+   random -> full shuffle
+   manual -> hand-picked seeds first (in order), rest shuffled */
+function orderBySeeding(participants, division) {
+    const mode = division.seeding || 'elo';
+    if (mode === 'random') {
+        const a = [...participants];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+    if (mode === 'manual') {
+        const seedNames = division.seedOrder || [];
+        const seeds = [];
+        const rest = [];
+        participants.forEach(pt => {
+            const si = seedNames.indexOf(pt.name);
+            if (si >= 0) seeds[si] = pt; else rest.push(pt);
+        });
+        const ordered = seeds.filter(Boolean);
+        for (let i = rest.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [rest[i], rest[j]] = [rest[j], rest[i]];
+        }
+        return ordered.concat(rest);
+    }
+    return [...participants].sort((a, b) => (b.elo || 0) - (a.elo || 0));
+}
+
 function buildAndStartDivisions() {
     if (lockedDivisions.length === 0) return alert("You need to lock at least one division first!");
 
@@ -349,7 +440,7 @@ function buildAndStartDivisions() {
             let p = [...division.participants];
 
             if (!division.isFromRR) {
-                p.sort((a, b) => (b.elo || 0) - (a.elo || 0));
+                p = orderBySeeding(p, division);
             }
 
             let round1 = buildSeededMatchups(p);
@@ -383,7 +474,7 @@ function buildAndStartDivisions() {
             let p = [...division.participants];
 
             if (!division.isFromRR) {
-                p.sort((a, b) => (b.elo || 0) - (a.elo || 0));
+                p = orderBySeeding(p, division);
             }
 
             let round1 = buildSeededMatchups(p);
@@ -484,7 +575,7 @@ function buildAndStartDivisions() {
         }
                         
         else if (division.format === 'round_robin') {
-            let p = [...division.participants];
+            let p = orderBySeeding([...division.participants], division);
             let matches = [];
             for(let i=0; i<p.length; i++) {
                 for(let j=i+1; j<p.length; j++) {
@@ -496,7 +587,7 @@ function buildAndStartDivisions() {
 
         else if (division.format === 'multi_group_rr') {
             let p = [...division.participants];
-            p.sort((a, b) => (b.elo || 0) - (a.elo || 0));
+            p = orderBySeeding(p, division);
             
             let numGroups = parseInt(document.getElementById('num-groups').value) || 2;
             let groups = Array.from({length: numGroups}, () => []);
@@ -919,6 +1010,10 @@ window.openScoreModal = function(divIdx, rIdx, mIdx, bType = 'winners') {
             <input type="number" class="score-input p2-score" value="${s2}" min="0">`;
     }
     bodyHtml += `</div>`;
+    if (typeof canManageTournaments === 'function' && !canManageTournaments()) {
+        bodyHtml += `<div style="margin-top:12px;"><label style="font-weight:bold; font-size:13px;">Scorekeeper name</label>
+            <input type="text" id="manual-keeper" class="uha-input" placeholder="Who is entering this score?" style="width:100%; margin-top:4px;" autocomplete="off"></div>`;
+    }
 
     document.getElementById('score-modal-body').innerHTML = bodyHtml;
     document.getElementById('score-modal').style.display = 'flex';
@@ -946,7 +1041,8 @@ window.saveScore = function() {
     if (isMgr) {
         if (finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores)) closeScoreModal();
     } else {
-        queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, 'manual');
+        const keeper = ((document.getElementById('manual-keeper') || {}).value || '').trim();
+        queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, 'manual', keeper);
         closeScoreModal();
     }
 };
@@ -1523,7 +1619,7 @@ window.confirmSwap = function() {
    Volunteers (non-managers) can score via Live or Enter Score, but the
    result goes to the pending queue. On approve, it commits to the bracket
    via finalizeBracketScore (advances winner, queues ELO). */
-function queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, source) {
+function queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, source, keeper) {
     const div = lockedDivisions[divIdx];
     if (!div) return alert('Tournament data not loaded.');
     const br = swapBracket(div, bType);
@@ -1556,6 +1652,7 @@ function queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, source) {
         losers: loserIds,
         games: detailedGames,
         source: source || 'live',
+        keeper: keeper || '',
         bracketRef: {
             divIdx, rIdx, mIdx, bType,
             divName: div.name || 'Event',
@@ -1640,12 +1737,14 @@ window.closeLiveModal = function() {
 window.startLiveScoring = function() {
     const target = parseInt((document.getElementById('live-setup-target') || {}).value) || 21;
     const toLimit = parseInt((document.getElementById('live-setup-to') || {}).value);
+    const keeper = ((document.getElementById('live-setup-keeper') || {}).value || '').trim();
     const serverEl = document.querySelector('input[name="live-server"]:checked');
     const live = {
         status: 'live', p1: 0, p2: 0, game: 1, games: [],
         target: target, winByTwo: false,
         server: serverEl ? serverEl.value : 'p1',
         timeouts: { p1: 0, p2: 0 }, timeoutLimit: isNaN(toLimit) ? 2 : toLimit,
+        keeper: keeper,
     };
     // optimistic: show the scoring view immediately instead of waiting
     // for the listener round-trip
@@ -1751,7 +1850,7 @@ window.liveCommitMatch = function() {
         }
     } else {
         // volunteers queue for review; clear the live node
-        queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, 'live');
+        queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, 'live', match.live.keeper);
         db.ref(liveNodePath()).remove().catch(() => {});
         closeLiveModal();
     }
@@ -1780,6 +1879,8 @@ function renderLiveOverlay() {
                         <label class="live-server-opt"><input type="radio" name="live-server" value="p1" checked><span>${serverNameHtml(n1)}</span></label>
                         <label class="live-server-opt"><input type="radio" name="live-server" value="p2"><span>${serverNameHtml(n2)}</span></label>
                     </div></div>
+                <div><label style="font-weight:bold;">Scorekeeper name</label>
+                    <input type="text" id="live-setup-keeper" class="uha-input" placeholder="Who is keeping score?" autocomplete="off"></div>
             </div>
             <div style="display:flex;gap:10px;margin-top:16px;">
                 <button class="uha-btn uha-btn-gold" style="flex:1;" onclick="startLiveScoring()">Start</button>

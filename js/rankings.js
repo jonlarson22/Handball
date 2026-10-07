@@ -299,7 +299,7 @@ function renderQueue() {
         
         const isTourney = !!(m.bracketRef && m.source);
         const tourneyTag = isTourney
-            ? `<div style="font-size:11px;color:var(--uha-gold);margin-bottom:4px;">\uD83C\uDFC6 ${m.source === 'live' ? 'Live scored' : 'Entered'} — ${m.bracketRef.divName || 'Event'} · ${m.bracketRef.roundLabel || ''}</div>`
+            ? `<div style="font-size:11px;color:var(--uha-gold);margin-bottom:4px;">\uD83C\uDFC6 ${m.source === 'live' ? 'Live scored' : 'Entered'} — ${m.bracketRef.divName || 'Event'} · ${m.bracketRef.roundLabel || ''}${m.keeper ? ` · scored by ${m.keeper}` : ''}</div>`
             : '';
         const approveFn = isTourney ? `approveLiveMatch(${index})` : `approveMatch(${index})`;
         html += `
