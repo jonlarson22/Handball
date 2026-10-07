@@ -1517,8 +1517,9 @@ function showLiveGameEnd(live) {
     const wName = liveTeamName(match, winnerSide);
     document.getElementById('live-gameend-title').textContent = `Game ${live.game} — ${wName} wins`;
     document.getElementById('live-gameend-score').textContent = `${live.p1} – ${live.p2}`;
-    const w = live.games.filter(g => g.p1 > g.p2).length + (winnerSide === 'p1' ? 1 : 0);
-    const l = live.games.length + 1 - w;
+    const doneGames = live.games || [];
+    const w = doneGames.filter(g => g.p1 > g.p2).length + (winnerSide === 'p1' ? 1 : 0);
+    const l = doneGames.length + 1 - w;
     document.getElementById('live-games-tally').textContent = `Games: ${w} – ${l}`;
     document.getElementById('live-next-target').value = live.target || 21;
     document.getElementById('live-gameend').hidden = false;
@@ -1528,6 +1529,7 @@ window.liveNextGame = function() {
     if (!match || !match.live) return;
     const live = match.live;
     const target = parseInt((document.getElementById('live-next-target') || {}).value) || live.target || 21;
+    live.games = live.games || [];
     live.games.push({ p1: live.p1, p2: live.p2 });
     live.p1 = 0; live.p2 = 0;
     live.game = (live.game || 1) + 1;
@@ -1550,7 +1552,7 @@ window.liveCommitMatch = function() {
     const match = getLiveMatch();
     if (!match || !match.live || !liveCtx) return;
     const live = match.live;
-    const gameScores = live.games.map(g => ({ p1: g.p1, p2: g.p2 }));
+    const gameScores = (live.games || []).map(g => ({ p1: g.p1, p2: g.p2 }));
     // the current game isn't banked yet when ending from the game-end interstitial
     if ((live.p1 || 0) > 0 || (live.p2 || 0) > 0) {
         const last = gameScores[gameScores.length - 1];
@@ -1603,7 +1605,7 @@ function renderLiveOverlay() {
 
     const live = match.live;
     const toLim = live.timeoutLimit || 2;
-    const gamesLine = live.games.map((g, i) => `G${i + 1}: ${g.p1}-${g.p2}`).join(' &nbsp;·&nbsp; ');
+    const gamesLine = (live.games || []).map((g, i) => `G${i + 1}: ${g.p1}-${g.p2}`).join(' &nbsp;·&nbsp; ');
     const serveBadge = s => live.server === s ? '<div class="live-serve-dot">● SERVING</div>' : '<div class="live-serve-dot off">&nbsp;</div>';
     const toBtn = s => {
         const used = (live.timeouts && live.timeouts[s]) || 0;

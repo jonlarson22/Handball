@@ -396,7 +396,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
 }
 
 /* leaderboard tabs + table */
-:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) .tab-bar {
+:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin, #screen-report) .tab-bar {
     display: flex;
     gap: 10px;
     margin-bottom: 16px;
@@ -404,7 +404,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     padding: 5px;
     border-radius: 10px;
 }
-:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) .tab {
+:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin, #screen-report) .tab {
     flex: 1;
     padding: 12px;
     text-align: center;
@@ -413,7 +413,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     font-weight: bold;
     color: #888;
 }
-:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) .active-tab {
+:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin, #screen-report) .active-tab {
     background: var(--uha-blue);
     color: white;
 }
@@ -931,7 +931,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     margin-bottom: 14px;
 }
 .admin-user-row .muted b { color: var(--text-light); }
-.admin-user-row .btn-sm { flex: 0 0 auto; width: auto; }
+:is(#screen-admin) .admin-user-row .btn-sm { flex: 0 0 auto; width: auto; }
 
 .role-row {
     display: flex;
