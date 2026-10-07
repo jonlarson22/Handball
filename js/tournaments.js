@@ -839,17 +839,18 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
         }
     } else if (teamA === "TBD" || teamB === "TBD") {
         actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Awaiting players</div>`;
-    } else if (isLive && canManageTournaments()) {
-        actionArea = `<button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Resume Live</button>`;
     } else if (isLive) {
-        actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Live scoring in progress</div>`;
+        actionArea = `<button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Resume Live</button>`;
     } else if (!hasScore && canManageTournaments()) {
         actionArea = `<div style="display:flex; gap:6px; justify-content:center;">
             <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>
             <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Live</button>
         </div>`;
     } else if (!hasScore) {
-        actionArea = `<button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>`;
+        actionArea = `<div style="display:flex; gap:6px; justify-content:center;">
+            <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>
+            <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Live</button>
+        </div>`;
     } else if (hasScore && canManageTournaments()) {
         actionArea = `<button class="uha-btn uha-btn-blue" style="width:auto; padding:5px 10px; font-size:11px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Edit Score</button>`;
     } else {
@@ -941,7 +942,13 @@ window.saveScore = function() {
         if (!isNaN(s1) && !isNaN(s2)) gameScores.push({ p1: s1, p2: s2 });
     }
 
-    if (finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores)) closeScoreModal();
+    const isMgr = typeof canManageTournaments === 'function' && canManageTournaments();
+    if (isMgr) {
+        if (finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores)) closeScoreModal();
+    } else {
+        queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, 'manual');
+        closeScoreModal();
+    }
 };
 
 /* Shared by manual score entry and live scoring.
@@ -1031,7 +1038,7 @@ function finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores) {
 
     try {
         if (bType !== 'third_place') {
-            progressBracket(divIdx, rIdx, mIdx);
+            progressBracket(divIdx, rIdx, mIdx, bType);
         }
 
         if (bType === 'winners' && div.format === 'single_elim' && div.hasThirdPlaceMatch && div.thirdPlaceMatch) {
@@ -1087,11 +1094,11 @@ function wipeForwardBracket(divIdx, rIdx, mIdx, bType = 'winners') {
     }
 }
 
-function progressBracket(divIdx, rIdx, mIdx) {
+function progressBracket(divIdx, rIdx, mIdx, bType) {
     let div = lockedDivisions[divIdx];
-    if (div.format !== 'single_elim' && div.format !== 'double_elim') return; 
+    if (div.format !== 'single_elim' && div.format !== 'double_elim') return;
 
-    const bType = currentScoreContext ? currentScoreContext.bType : 'winners';
+    if (!bType) bType = currentScoreContext ? currentScoreContext.bType : 'winners';
     let targetBracket = bType === 'finals' ? div.finalsBracket : (bType === 'losers' ? div.losersBracket : div.bracket);
     let match = targetBracket[rIdx][mIdx];
     
@@ -1163,9 +1170,9 @@ window.adminAutoWinBye = function(divIdx, rIdx, mIdx, bType) {
     match.p2Wins = p1IsBye ? 1 : 0;
 
     currentScoreContext = { divIdx, rIdx, mIdx, bType };
-    
+
     try {
-        progressBracket(divIdx, rIdx, mIdx);
+        progressBracket(divIdx, rIdx, mIdx, bType);
     } catch (e) {
         console.error("Progress error:", e);
         alert("Advanced the score, but could not push forward automatically. Use the Override tool.");
@@ -1512,6 +1519,57 @@ window.confirmSwap = function() {
         .catch(e => alert('Could not save swap: ' + e.message));
 };
 
+/* ============ public tournament results -> review queue ============
+   Volunteers (non-managers) can score via Live or Enter Score, but the
+   result goes to the pending queue. On approve, it commits to the bracket
+   via finalizeBracketScore (advances winner, queues ELO). */
+function queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, source) {
+    const div = lockedDivisions[divIdx];
+    if (!div) return alert('Tournament data not loaded.');
+    const br = swapBracket(div, bType);
+    const match = br && br[rIdx] && br[rIdx][mIdx];
+    if (!match || !match.p1 || !match.p2) return alert('Match not found.');
+
+    let p1Wins = 0, p2Wins = 0;
+    const detailedGames = [];
+    (gameScores || []).forEach(g => {
+        if (g.p1 > g.p2) p1Wins++; else if (g.p2 > g.p1) p2Wins++;
+        detailedGames.push({ w: Math.max(g.p1, g.p2), l: Math.min(g.p1, g.p2) });
+    });
+    if (!p1Wins && !p2Wins) return alert('Please enter at least one game score.');
+    if (p1Wins === p2Wins) return alert('Match cannot end in a tie.');
+
+    const winnerSide = p1Wins > p2Wins ? 'p1' : 'p2';
+    const teamIds = (t) => (t && Array.isArray(t.ids) ? t.ids.map(Number).filter(n => n > 0) : []);
+    const winnerIds = teamIds(match[winnerSide]);
+    const loserIds = teamIds(match[winnerSide === 'p1' ? 'p2' : 'p1']);
+    if (!winnerIds.length || !loserIds.length) return alert('Could not resolve player IDs.');
+
+    const roundLabel = bType === 'third_place' ? '3rd Place' :
+        (bType === 'finals' ? 'Final' : bType === 'losers' ? `Losers R${rIdx + 1}` : `Round ${rIdx + 1}`);
+
+    db.ref('pending').push({
+        id: Date.now(),
+        mode: div.mode ? div.mode.toLowerCase() : 'unknown',
+        score: `${Math.max(p1Wins, p2Wins)}-${Math.min(p1Wins, p2Wins)}`,
+        winners: winnerIds,
+        losers: loserIds,
+        games: detailedGames,
+        source: source || 'live',
+        bracketRef: {
+            divIdx, rIdx, mIdx, bType,
+            divName: div.name || 'Event',
+            roundLabel,
+            p1Name: match.p1.name, p2Name: match.p2.name,
+            p1Ids: winnerSide === 'p1' ? winnerIds : loserIds,
+            p2Ids: winnerSide === 'p1' ? loserIds : winnerIds,
+        },
+        submittedAt: new Date().toISOString(),
+    }).then(() => {
+        showToast('Result submitted for review!');
+    }).catch(e => alert('Could not submit: ' + e.message));
+}
+
 /* ================= live scoring =================
    Each bracket match can carry match.live = {
      status:'live', p1, p2 (current game points), game (game number),
@@ -1562,7 +1620,6 @@ function liveGameDone(live) {
 }
 
 window.openLiveScoring = function(divIdx, rIdx, mIdx, bType = 'winners') {
-    if (typeof canManageTournaments === 'function' && !canManageTournaments()) return;
     if (typeof currentTourneyPath !== 'undefined' && currentTourneyPath !== 'active') {
         alert('Live scoring is only available on the active tournament.');
         return;
@@ -1683,12 +1740,20 @@ window.liveCommitMatch = function() {
     const wName = liveTeamName(match, w1 > gameScores.length / 2 ? 'p1' : 'p2');
     if (!confirm(`End match and record ${wName} as the winner?\nGames: ` + gameScores.map(g => `${g.p1}-${g.p2}`).join(', '))) return;
     const { divIdx, rIdx, mIdx, bType } = liveCtx;
-    delete match.live;
+    const isMgr = typeof canManageTournaments === 'function' && canManageTournaments();
     document.getElementById('live-gameend').hidden = true;
-    if (finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores)) {
-        closeLiveModal();
+    if (isMgr) {
+        delete match.live;
+        if (finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores)) {
+            closeLiveModal();
+        } else {
+            match.live = live; // restore if finalize bailed
+        }
     } else {
-        match.live = live; // restore if finalize bailed
+        // volunteers queue for review; clear the live node
+        queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, 'live');
+        db.ref(liveNodePath()).remove().catch(() => {});
+        closeLiveModal();
     }
 };
 

@@ -15,7 +15,22 @@
     },
     "tournaments": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).child('role').val() == 'owner' || root.child('admins').child(auth.uid).child('role').val() == 'admin' || root.child('admins').child(auth.uid).child('role').val() == 'director')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).child('role').val() == 'owner' || root.child('admins').child(auth.uid).child('role').val() == 'admin' || root.child('admins').child(auth.uid).child('role').val() == 'director')",
+      "active": {
+        "divisions": {
+          "$div": {
+            "$bracket": {
+              "$r": {
+                "$m": {
+                  "live": {
+                    ".write": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "admins": {
       ".read": "auth != null",

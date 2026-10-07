@@ -297,12 +297,18 @@ function renderQueue() {
         const scoreStr = gamesList.map(g => `${g.w}-${g.l}`).join(', ');
         const displayMode = (m.mode || 'singles').toUpperCase();
         
+        const isTourney = !!(m.bracketRef && m.source);
+        const tourneyTag = isTourney
+            ? `<div style="font-size:11px;color:var(--uha-gold);margin-bottom:4px;">\uD83C\uDFC6 ${m.source === 'live' ? 'Live scored' : 'Entered'} — ${m.bracketRef.divName || 'Event'} · ${m.bracketRef.roundLabel || ''}</div>`
+            : '';
+        const approveFn = isTourney ? `approveLiveMatch(${index})` : `approveMatch(${index})`;
         html += `
     <div class="queue-item">
+        ${tourneyTag}
         <div class="queue-matchup">${wNames} <span class="vs">def.</span> ${lNames}</div>
         <div class="queue-scores">Scores: ${scoreStr} | <span>${displayMode}</span></div>
         <div class="queue-actions">
-            <button class="qa-approve" onclick="approveMatch(${index})">APPROVE</button>
+            <button class="qa-approve" onclick="${approveFn}">APPROVE</button>
             <button class="qa-review" onclick="reviewSub(${index})">REVIEW/EDIT</button>
             <button class="qa-reject" onclick="rejectSub(${index})">REJECT</button>
         </div>
@@ -401,6 +407,46 @@ window.cancelPendingEdit = function() {
     });
     showToast('Edit cancelled — the original is still in the queue.');
 };
+
+function approveLiveMatch(index) {
+    const m = pending[index];
+    if (!m || !m.bracketRef) return;
+    const ref = m.bracketRef;
+
+    // the bracket may have changed since scoring — validate the slot
+    const div = (lockedDivisions || [])[ref.divIdx];
+    const br = div ? (ref.bType === 'finals' ? div.finalsBracket
+        : ref.bType === 'losers' ? div.losersBracket
+        : ref.bType === 'third_place' ? div.thirdPlaceMatch : div.bracket) : null;
+    const match = br && br[ref.rIdx] && br[ref.rIdx][ref.mIdx];
+
+    if (!div || !match || !match.p1 || !match.p2) {
+        return alert('That bracket slot no longer exists (the tournament changed since this was scored). Reject this entry or re-enter the result.');
+    }
+    const idsEq = (a, b) => JSON.stringify((a || []).map(Number).sort()) === JSON.stringify((b || []).map(Number).sort());
+    const slotOk = (idsEq((match.p1.ids || []), ref.p1Ids) && idsEq((match.p2.ids || []), ref.p2Ids))
+        || (idsEq((match.p1.ids || []), ref.p2Ids) && idsEq((match.p2.ids || []), ref.p1Ids));
+    if (!slotOk) {
+        const cur = `${match.p1.name} vs ${match.p2.name}`;
+        const was = `${ref.p1Name} vs ${ref.p2Name}`;
+        if (!confirm(`The bracket has changed since this was scored.\nWas: ${was}\nNow: ${cur}\n\nApply the scores to the current matchup anyway?`)) return;
+    }
+
+    // rebuild game scores in side perspective (p1/p2) from the queued result
+    const wIds = (m.winners || []).map(Number);
+    let wIsP1 = idsEq((match.p1.ids || []), wIds);
+    if (!wIsP1 && !idsEq((match.p2.ids || []), wIds)) {
+        // winners match neither current slot — fall back to the stored order
+        wIsP1 = idsEq(ref.p1Ids || [], wIds);
+    }
+    const gameScores = (m.games || []).map(g => wIsP1 ? { p1: g.w, p2: g.l } : { p1: g.l, p2: g.w });
+
+    if (typeof finalizeBracketScore === 'function' && finalizeBracketScore(ref.divIdx, ref.rIdx, ref.mIdx, ref.bType, gameScores)) {
+        if (m.firebaseKey) db.ref(`pending/${m.firebaseKey}`).remove().catch(() => {});
+        else pending.splice(index, 1);
+        if (typeof renderQueue === 'function') renderQueue();
+    }
+}
 
 function rejectSub(index) {
     const m = pending[index];
