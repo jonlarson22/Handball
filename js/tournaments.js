@@ -833,6 +833,8 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
     }
 
     let actionArea = '';
+    const isLive = match.live && match.live.status === 'live';
+    const liveStrip = isLive ? `<div class="live-strip"><span class="live-pulse">●</span> LIVE &middot; Game ${match.live.game || 1} &middot; ${match.live.p1 || 0}&ndash;${match.live.p2 || 0}</div>` : '';
 
     if (isViewingArchive) {
         actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Archived - Read Only</div>`;
@@ -844,6 +846,15 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
         }
     } else if (teamA === "TBD" || teamB === "TBD") {
         actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Awaiting players</div>`;
+    } else if (isLive && canManageTournaments()) {
+        actionArea = `<button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Resume Live</button>`;
+    } else if (isLive) {
+        actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Live scoring in progress</div>`;
+    } else if (!hasScore && canManageTournaments()) {
+        actionArea = `<div style="display:flex; gap:6px; justify-content:center;">
+            <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>
+            <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Live</button>
+        </div>`;
     } else if (!hasScore) {
         actionArea = `<button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>`;
     } else if (hasScore && canManageTournaments()) {
@@ -869,6 +880,7 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
 
                 ${hasScore ? `<div style="text-align:center; font-size:10px; color:#fff; margin-top:5px; border-top: 1px solid #2a2a2a; padding-top: 3px;">${match.scores}</div>` : ''}
             </div>
+            ${liveStrip}
             <div style="margin-top: 8px; display: flex; justify-content: center;">
                 ${actionArea}
             </div>
@@ -923,34 +935,42 @@ window.closeScoreModal = function() {
 
 window.saveScore = function() {
     const { divIdx, rIdx, mIdx, bType } = currentScoreContext;
+
+    const p1Inputs = document.querySelectorAll('.p1-score');
+    const p2Inputs = document.querySelectorAll('.p2-score');
+
+    const gameScores = [];
+    for(let i=0; i<3; i++) {
+        let s1 = parseInt(p1Inputs[i].value);
+        let s2 = parseInt(p2Inputs[i].value);
+        if (!isNaN(s1) && !isNaN(s2)) gameScores.push({ p1: s1, p2: s2 });
+    }
+
+    if (finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores)) closeScoreModal();
+};
+
+/* Shared by manual score entry and live scoring.
+   gameScores: [{p1, p2}] in side perspective. Returns true on success. */
+function finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores) {
     const div = lockedDivisions[divIdx];
 
     let targetBracket = div.bracket;
     if (bType === 'finals') targetBracket = div.finalsBracket;
     else if (bType === 'losers') targetBracket = div.losersBracket;
     else if (bType === 'third_place') targetBracket = div.thirdPlaceMatch;
-    
+
     const match = targetBracket[rIdx][mIdx];
 
-    const p1Inputs = document.querySelectorAll('.p1-score');
-    const p2Inputs = document.querySelectorAll('.p2-score');
-
-    let scoreStrings = [];
     let p1Wins = 0, p2Wins = 0;
+    const scoreStrings = [];
+    (gameScores || []).forEach(g => {
+        scoreStrings.push(`${g.p1}-${g.p2}`);
+        if (g.p1 > g.p2) p1Wins++;
+        else if (g.p2 > g.p1) p2Wins++;
+    });
 
-    for(let i=0; i<3; i++) {
-        let s1 = parseInt(p1Inputs[i].value);
-        let s2 = parseInt(p2Inputs[i].value);
-
-        if (!isNaN(s1) && !isNaN(s2)) {
-            scoreStrings.push(`${s1}-${s2}`);
-            if (s1 > s2) p1Wins++;
-            else if (s2 > s1) p2Wins++;
-        }
-    }
-
-    if (scoreStrings.length === 0) return alert("Please enter at least one game score.");
-    if (p1Wins === p2Wins) return alert("Match cannot end in a tie.");
+    if (scoreStrings.length === 0) { alert("Please enter at least one game score."); return false; }
+    if (p1Wins === p2Wins) { alert("Match cannot end in a tie."); return false; }
 
     if (match.winner && (div.format === 'single_elim' || div.format === 'double_elim') && bType !== 'third_place') {
         let nextRIdx = rIdx + 1;
@@ -983,15 +1003,11 @@ window.saveScore = function() {
     const losingTeam = match.winner === 'p1' ? match.p2 : match.p1;
 
     let detailedGames = [];
-    for(let i=0; i<3; i++) {
-        let s1 = parseInt(p1Inputs[i].value);
-        let s2 = parseInt(p2Inputs[i].value);
-        if (!isNaN(s1) && !isNaN(s2)) {
-            let wScore = match.winner === 'p1' ? s1 : s2;
-            let lScore = match.winner === 'p1' ? s2 : s1;
-            detailedGames.push({ w: wScore, l: lScore });
-        }
-    }
+    gameScores.forEach(g => {
+        let wScore = match.winner === 'p1' ? g.p1 : g.p2;
+        let lScore = match.winner === 'p1' ? g.p2 : g.p1;
+        detailedGames.push({ w: wScore, l: lScore });
+    });
 
     // Player ids ride on the team objects from draft time (no name matching).
     const teamPlayerIds = (team) => {
@@ -1039,20 +1055,20 @@ window.saveScore = function() {
     }
 
     renderTournamentView();
-    closeScoreModal();
 
     const titleEl = document.getElementById('tourney-title');
     const inputEl = document.getElementById('tournament-name');
     const tName = titleEl ? titleEl.innerText : (inputEl ? inputEl.value : "UHA Tournament");
 
     db.ref('tournaments/active').set({
-        name: tName, 
+        name: tName,
         updatedAt: firebase.database.ServerValue.TIMESTAMP,
         divisions: lockedDivisions
     }).then(() => {
         console.log("Tournament state saved successfully.");
     }).catch(e => console.error("Firebase auto-save failed:", e));
-};
+    return true;
+}
 
 function wipeForwardBracket(divIdx, rIdx, mIdx, bType = 'winners') {
     let div = lockedDivisions[divIdx];
@@ -1304,6 +1320,7 @@ function loadTournamentData(path) {
 
             renderTournamentView();
             refreshDivisionSelector();
+            if (typeof renderLiveOverlay === 'function' && typeof liveCtx !== 'undefined' && liveCtx) renderLiveOverlay();
         } else {
             lockedDivisions = [];
             refreshDivisionSelector();
@@ -1371,3 +1388,266 @@ loadArchiveList();
 onPlayersUpdate(refreshRosterFromDB);
 
 loadTournamentData('active');
+
+/* ================= live scoring =================
+   Each bracket match can carry match.live = {
+     status:'live', p1, p2 (current game points), game (game number),
+     games:[{p1,p2} finished], target, winByTwo, server:'p1'|'p2',
+     timeouts:{p1,p2} (used this game), timeoutLimit,
+     updatedAt, updatedBy }
+   Writes go to the single live node so every viewer updates instantly
+   through the existing tournament listener. */
+let liveCtx = null;
+let liveEndAck = false; // game-end interstitial already shown for this game
+
+function liveBracketKey(bType) {
+    return bType === 'finals' ? 'finalsBracket'
+         : bType === 'losers' ? 'losersBracket'
+         : bType === 'third_place' ? 'thirdPlaceMatch' : 'bracket';
+}
+function getLiveMatch() {
+    if (!liveCtx) return null;
+    const div = lockedDivisions[liveCtx.divIdx];
+    if (!div) return null;
+    const tb = div[liveBracketKey(liveCtx.bType)];
+    return (tb && tb[liveCtx.rIdx]) ? tb[liveCtx.rIdx][liveCtx.mIdx] : null;
+}
+function liveNodePath() {
+    const c = liveCtx;
+    return `tournaments/active/divisions/${c.divIdx}/${liveBracketKey(c.bType)}/${c.rIdx}/${c.mIdx}/live`;
+}
+function writeLive(live) {
+    live.updatedAt = firebase.database.ServerValue.TIMESTAMP;
+    live.updatedBy = (typeof currentUser !== 'undefined' && currentUser && currentUser.email) || '';
+    return db.ref(liveNodePath()).set(live);
+}
+function liveTeamName(match, side) {
+    const t = side === 'p1' ? match.p1 : match.p2;
+    return (t && t.name) ? t.name : side.toUpperCase();
+}
+function liveGameDone(live) {
+    if (!live || live.status !== 'live') return false;
+    const t = live.target || 21;
+    const reached = (live.p1 >= t) || (live.p2 >= t);
+    if (!reached) return false;
+    if (live.winByTwo && Math.abs(live.p1 - live.p2) < 2) return false;
+    return true;
+}
+
+window.openLiveScoring = function(divIdx, rIdx, mIdx, bType = 'winners') {
+    if (typeof canManageTournaments === 'function' && !canManageTournaments()) return;
+    if (typeof currentTourneyPath !== 'undefined' && currentTourneyPath !== 'active') {
+        alert('Live scoring is only available on the active tournament.');
+        return;
+    }
+    liveCtx = { divIdx, rIdx, mIdx, bType };
+    liveEndAck = false;
+    const modal = document.getElementById('live-modal');
+    if (modal) modal.style.display = 'flex';
+    renderLiveOverlay();
+};
+window.closeLiveModal = function() {
+    const modal = document.getElementById('live-modal');
+    if (modal) modal.style.display = 'none';
+    liveCtx = null;
+    liveEndAck = false;
+};
+
+window.startLiveScoring = function() {
+    const target = parseInt((document.getElementById('live-setup-target') || {}).value) || 21;
+    const winByTwo = !!(document.getElementById('live-setup-deuce') || {}).checked;
+    const toLimit = parseInt((document.getElementById('live-setup-to') || {}).value);
+    const serverEl = document.querySelector('input[name="live-server"]:checked');
+    const live = {
+        status: 'live', p1: 0, p2: 0, game: 1, games: [],
+        target: target, winByTwo: winByTwo,
+        server: serverEl ? serverEl.value : 'p1',
+        timeouts: { p1: 0, p2: 0 }, timeoutLimit: isNaN(toLimit) ? 2 : toLimit,
+    };
+    writeLive(live).catch(e => alert('Could not start live scoring: ' + e.message));
+};
+
+window.livePoint = function(side, delta = 1) {
+    if (!liveCtx) return;
+    db.ref(liveNodePath()).transaction(live => {
+        if (!live || live.status !== 'live') return live;
+        live[side] = Math.max(0, (live[side] || 0) + delta);
+        return live;
+    }).then(res => {
+        const live = res && res.snapshot ? res.snapshot.val() : null;
+        if (live && liveGameDone(live) && !liveEndAck) {
+            liveEndAck = true;
+            showLiveGameEnd(live);
+        }
+    });
+};
+window.liveTimeout = function(side) {
+    if (!liveCtx) return;
+    db.ref(liveNodePath()).transaction(live => {
+        if (!live || live.status !== 'live') return live;
+        live.timeouts = live.timeouts || { p1: 0, p2: 0 };
+        const used = live.timeouts[side] || 0;
+        if (used >= (live.timeoutLimit || 2)) return live;
+        live.timeouts[side] = used + 1;
+        return live;
+    });
+};
+window.liveToggleServer = function() {
+    const match = getLiveMatch();
+    if (!match || !match.live) return;
+    const live = match.live;
+    live.server = live.server === 'p1' ? 'p2' : 'p1';
+    writeLive(live);
+};
+function showLiveGameEnd(live) {
+    const match = getLiveMatch();
+    if (!match) return;
+    const winnerSide = live.p1 > live.p2 ? 'p1' : 'p2';
+    const wName = liveTeamName(match, winnerSide);
+    document.getElementById('live-gameend-title').textContent = `Game ${live.game} — ${wName} wins`;
+    document.getElementById('live-gameend-score').textContent = `${live.p1} – ${live.p2}`;
+    const w = live.games.filter(g => g.p1 > g.p2).length + (winnerSide === 'p1' ? 1 : 0);
+    const l = live.games.length + 1 - w;
+    document.getElementById('live-games-tally').textContent = `Games: ${w} – ${l}`;
+    document.getElementById('live-next-target').value = live.target || 21;
+    document.getElementById('live-gameend').hidden = false;
+}
+window.liveNextGame = function() {
+    const match = getLiveMatch();
+    if (!match || !match.live) return;
+    const live = match.live;
+    const target = parseInt((document.getElementById('live-next-target') || {}).value) || live.target || 21;
+    live.games.push({ p1: live.p1, p2: live.p2 });
+    live.p1 = 0; live.p2 = 0;
+    live.game = (live.game || 1) + 1;
+    live.target = target;
+    live.timeouts = { p1: 0, p2: 0 };
+    liveEndAck = false;
+    document.getElementById('live-gameend').hidden = true;
+    writeLive(live).catch(e => alert('Failed: ' + e.message));
+};
+window.liveEndGameManual = function() {
+    const match = getLiveMatch();
+    if (!match || !match.live) return;
+    const live = match.live;
+    if (live.p1 === 0 && live.p2 === 0) { alert('No points scored yet.'); return; }
+    if (live.p1 === live.p2) { alert('A game cannot end tied.'); return; }
+    liveEndAck = true;
+    showLiveGameEnd(live);
+};
+window.liveCommitMatch = function() {
+    const match = getLiveMatch();
+    if (!match || !match.live || !liveCtx) return;
+    const live = match.live;
+    const gameScores = live.games.map(g => ({ p1: g.p1, p2: g.p2 }));
+    // the current game isn't banked yet when ending from the game-end interstitial
+    if ((live.p1 || 0) > 0 || (live.p2 || 0) > 0) {
+        const last = gameScores[gameScores.length - 1];
+        if (!last || last.p1 !== live.p1 || last.p2 !== live.p2) gameScores.push({ p1: live.p1, p2: live.p2 });
+    }
+    if (!gameScores.length) { alert('No completed games yet.'); return; }
+    const w1 = gameScores.filter(g => g.p1 > g.p2).length;
+    const wName = liveTeamName(match, w1 > gameScores.length / 2 ? 'p1' : 'p2');
+    if (!confirm(`End match and record ${wName} as the winner?\nGames: ` + gameScores.map(g => `${g.p1}-${g.p2}`).join(', '))) return;
+    const { divIdx, rIdx, mIdx, bType } = liveCtx;
+    delete match.live;
+    document.getElementById('live-gameend').hidden = true;
+    if (finalizeBracketScore(divIdx, rIdx, mIdx, bType, gameScores)) {
+        closeLiveModal();
+    } else {
+        match.live = live; // restore if finalize bailed
+    }
+};
+
+function renderLiveOverlay() {
+    const body = document.getElementById('live-modal-body');
+    if (!body || !liveCtx) return;
+    const match = getLiveMatch();
+    if (!match) { body.innerHTML = '<p class="muted">Match not found.</p>'; return; }
+    const n1 = liveTeamName(match, 'p1');
+    const n2 = liveTeamName(match, 'p2');
+
+    if (!match.live || match.live.status !== 'live') {
+        // setup view
+        body.innerHTML = `
+            <h2 style="color:var(--uha-gold);margin-top:0;">Start Live Scoring</h2>
+            <p class="muted" style="margin-top:0;">${n1} vs ${n2}</p>
+            <div style="display:grid;gap:12px;text-align:left;">
+                <div><label style="font-weight:bold;">Points per game</label>
+                    <input type="number" id="live-setup-target" class="uha-input" value="21" min="1"></div>
+                <label style="display:flex;gap:8px;align-items:center;">
+                    <input type="checkbox" id="live-setup-deuce"> Must win by 2</label>
+                <div><label style="font-weight:bold;">Timeouts per game (each side)</label>
+                    <input type="number" id="live-setup-to" class="uha-input" value="2" min="0"></div>
+                <div><label style="font-weight:bold;">First server</label>
+                    <div style="display:flex;gap:8px;margin-top:4px;">
+                        <label style="flex:1;"><input type="radio" name="live-server" value="p1" checked> ${n1}</label>
+                        <label style="flex:1;"><input type="radio" name="live-server" value="p2"> ${n2}</label>
+                    </div></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+                <button class="uha-btn uha-btn-gold" style="flex:1;" onclick="startLiveScoring()">Start</button>
+                <button class="uha-btn-outline" style="flex:1;" onclick="closeLiveModal()">Cancel</button>
+            </div>`;
+        return;
+    }
+
+    const live = match.live;
+    const toLim = live.timeoutLimit || 2;
+    const gamesLine = live.games.map((g, i) => `G${i + 1}: ${g.p1}-${g.p2}`).join(' &nbsp;·&nbsp; ');
+    const serveBadge = s => live.server === s ? '<div class="live-serve-dot">● SERVING</div>' : '<div class="live-serve-dot off">&nbsp;</div>';
+    const toBtn = s => {
+        const used = (live.timeouts && live.timeouts[s]) || 0;
+        const done = used >= toLim;
+        return `<button class="live-to-btn${done ? ' used' : ''}" ${done ? 'disabled' : ''} onclick="liveTimeout('${s}')">TO ${used}/${toLim}</button>`;
+    };
+    body.innerHTML = `
+        <div class="live-head">
+            <span class="live-badge"><span class="live-pulse">●</span> LIVE</span>
+            <span class="live-title">${n1} vs ${n2}</span>
+            <button class="uha-btn-outline btn-sm" onclick="closeLiveModal()">Done</button>
+        </div>
+        <div class="live-game-label">Game ${live.game} &nbsp;·&nbsp; first to ${live.target}${live.winByTwo ? ' (win by 2)' : ''}</div>
+        ${gamesLine ? `<div class="live-games-line">${gamesLine}</div>` : ''}
+        <div class="live-scores">
+            <div class="live-side">
+                <div class="live-name">${n1}</div>
+                <div class="live-pts">${live.p1}</div>
+                ${serveBadge('p1')}
+                <button class="live-plus" onclick="livePoint('p1', 1)">+1</button>
+                <div class="live-row">
+                    <button class="live-minus" onclick="livePoint('p1', -1)">−1</button>
+                    ${toBtn('p1')}
+                </div>
+            </div>
+            <div class="live-side">
+                <div class="live-name">${n2}</div>
+                <div class="live-pts">${live.p2}</div>
+                ${serveBadge('p2')}
+                <button class="live-plus" onclick="livePoint('p2', 1)">+1</button>
+                <div class="live-row">
+                    <button class="live-minus" onclick="livePoint('p2', -1)">−1</button>
+                    ${toBtn('p2')}
+                </div>
+            </div>
+        </div>
+        <div class="live-controls">
+            <button class="uha-btn-outline btn-sm" onclick="liveToggleServer()">⇄ Switch server</button>
+            <button class="uha-btn-outline btn-sm" onclick="liveEndGameManual()">End game</button>
+            <button class="uha-btn btn-sm" style="background:#e74c3c;" onclick="liveCommitMatch()">End match</button>
+        </div>
+        <div id="live-gameend" hidden>
+            <h3 id="live-gameend-title" style="color:var(--uha-gold);"></h3>
+            <p id="live-gameend-score" style="font-size:28px;font-weight:bold;margin:4px 0;"></p>
+            <p id="live-games-tally" class="muted"></p>
+            <div style="margin:10px 0;"><label style="font-weight:bold;">Next game to: </label>
+                <input type="number" id="live-next-target" class="uha-input" style="width:90px;display:inline-block;" min="1"></div>
+            <div style="display:flex;gap:10px;">
+                <button class="uha-btn uha-btn-blue" style="flex:1;" onclick="liveNextGame()">Start next game</button>
+                <button class="uha-btn uha-btn-gold" style="flex:1;" onclick="liveCommitMatch()">End match</button>
+            </div>
+        </div>`;
+    // the Firebase listener re-renders on every point; keep the game-end
+    // interstitial visible across re-renders once the game is decided
+    if (liveEndAck && liveGameDone(live)) showLiveGameEnd(live);
+}

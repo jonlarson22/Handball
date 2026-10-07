@@ -196,6 +196,56 @@ body {
     #report-body svg line { stroke: #ccc !important; }
 }
 
+/* ---------- live scoring ---------- */
+.live-strip {
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: #ff6b6b;
+    background: rgba(231, 76, 60, 0.12);
+    border: 1px solid #e74c3c;
+    border-radius: 6px;
+    padding: 5px 8px;
+    margin-bottom: 6px;
+}
+.live-pulse { animation: liveBlink 1.2s ease-in-out infinite; }
+@keyframes liveBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+.live-modal-content { max-width: 520px; }
+.live-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.live-badge { color: #ff6b6b; font-weight: 800; letter-spacing: 1px; white-space: nowrap; }
+.live-title { flex: 1; font-weight: bold; font-size: 14px; overflow-wrap: break-word; }
+.live-game-label { text-align: center; color: #888; font-size: 13px; margin-bottom: 4px; }
+.live-games-line { text-align: center; color: var(--uha-gold); font-size: 13px; margin-bottom: 10px; }
+.live-scores { display: flex; gap: 12px; margin: 10px 0; }
+.live-side {
+    flex: 1; min-width: 0;
+    background: #1a1a1a; border: 1px solid var(--border-color); border-radius: 10px;
+    padding: 12px 8px; text-align: center;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.live-name { font-weight: bold; font-size: 14px; overflow-wrap: break-word; min-height: 20px; }
+.live-pts { font-size: 56px; font-weight: 800; color: var(--uha-blue); line-height: 1; }
+.live-serve-dot { font-size: 11px; font-weight: bold; color: var(--uha-gold); min-height: 14px; }
+.live-serve-dot.off { visibility: hidden; }
+.live-plus {
+    font-size: 22px; font-weight: 800; padding: 14px;
+    background: var(--uha-blue); color: #fff; border: none; border-radius: 8px; cursor: pointer;
+}
+.live-plus:active { transform: scale(0.96); }
+.live-row { display: flex; gap: 8px; }
+.live-minus, .live-to-btn {
+    flex: 1; padding: 10px 4px; border-radius: 8px; cursor: pointer;
+    background: #2a2a2a; color: #fff; border: 1px solid #444; font-size: 13px; font-weight: bold;
+}
+.live-to-btn.used { opacity: 0.4; }
+.live-controls { display: flex; gap: 8px; margin-top: 12px; }
+.live-controls .btn-sm { flex: 1; }
+#live-gameend {
+    margin-top: 14px; padding: 14px;
+    background: #1a1a1a; border: 1px solid var(--uha-gold); border-radius: 10px;
+    text-align: center;
+}
+
 /* ---------- role gating ---------- */
 .admin-only { display: none !important; }
 body.admin-mode .admin-only { display: block !important; }
