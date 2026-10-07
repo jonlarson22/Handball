@@ -188,49 +188,42 @@
         <div id="admin-review" class="ascreen"><div id="adminQueue" style="margin-bottom: 25px;"></div></div>
         <div id="admin-players" class="ascreen" hidden><div class="panel">
 <div class="mgmt-box admin-only">
-    <div style="display: flex; gap: 20px; margin-bottom: 15px;">
-        <div style="flex: 1;">
-		    <span class="label">ADD PLAYER</span>
-		    <input type="text" id="addN" placeholder="Name" style="margin-bottom: 5px; width: 100%;">
-		    <button onclick="addPlayer()" style="background:#3498db; width: 100%; margin-bottom: 5px;">Create</button>
-		    <div style="display: flex; align-items: center; gap: 5px;">
-		        <input type="checkbox" id="addMember" checked style="width: auto; margin: 0; cursor: pointer;">
-		        <label for="addMember" style="font-size: 12px; color: #888; cursor: pointer;">UHA Member</label>
-		    </div>
-		</div>
-
-        <div style="flex: 1;">
-            <span class="label">MANAGE ROSTER</span>
-            <select id="manageList"></select>
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <button onclick="changeStatus(true)" style="background:#c0392b; flex:1;">Retire</button>
-                <button onclick="changeStatus(false)" style="background:#27ae60; flex:1;">Reactivate</button>
-            </div>
+    <div style="margin-bottom: 18px;">
+        <span class="label">ADD PLAYER</span>
+        <input type="text" id="addN" placeholder="Name" style="margin-bottom: 8px; width: 100%;">
+        <button onclick="addPlayer()" style="background:#3498db; width: 100%; margin-bottom: 8px;">Create</button>
+        <div style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="addMember" checked style="width: auto; margin: 0; cursor: pointer;">
+            <label for="addMember" style="font-size: 12px; color: #888; cursor: pointer;">UHA Member</label>
         </div>
     </div>
 
     <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
 
-    <span class="label">EDIT PLAYER / RATINGS</span>
-    <div style="display: flex; gap: 20px;">
-        <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-                <select id="editList" onchange="loadPlayer()" style="width: 100%;"></select>
-            </div>
-            <button onclick="updatePlayer()" style="background:#f1c40f; height: 38px; margin-top: 5px;">Update Player</button>
+    <div style="margin-bottom: 18px;">
+        <span class="label">MANAGE ROSTER</span>
+        <select id="manageList" style="width: 100%; margin-bottom: 8px;"></select>
+        <div style="display:flex; gap:8px;">
+            <button onclick="changeStatus(true)" style="background:#c0392b; flex:1;">Retire</button>
+            <button onclick="changeStatus(false)" style="background:#27ae60; flex:1;">Reactivate</button>
         </div>
+    </div>
 
-        <div style="flex: 1;">
-            <input type="text" id="editN" placeholder="Update Name" style="margin-bottom: 5px; width: 100%;">
-            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                <input type="number" id="editS" placeholder="Singles" style="flex: 1; width: 45%;">
-                <input type="number" id="editD" placeholder="Doubles" style="flex: 1; width: 45%;">
-            </div>
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <input type="checkbox" id="editMember" style="width: auto; margin: 0; cursor: pointer;">
-                <label for="editMember" style="font-size: 12px; color: #888; cursor: pointer;">UHA Member (Show on Leaderboard)</label>
-            </div>
+    <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
+
+    <div>
+        <span class="label">EDIT PLAYER / RATINGS</span>
+        <select id="editList" onchange="loadPlayer()" style="width: 100%; margin-bottom: 8px;"></select>
+        <input type="text" id="editN" placeholder="Update Name" style="margin-bottom: 8px; width: 100%;">
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="number" id="editS" placeholder="Singles rating" style="flex: 1;">
+            <input type="number" id="editD" placeholder="Doubles rating" style="flex: 1;">
         </div>
+        <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 10px;">
+            <input type="checkbox" id="editMember" style="width: auto; margin: 0; cursor: pointer;">
+            <label for="editMember" style="font-size: 12px; color: #888; cursor: pointer;">UHA Member (Show on Leaderboard)</label>
+        </div>
+        <button onclick="updatePlayer()" style="background:#f1c40f; width: 100%; height: 44px;">Update Player</button>
     </div>
 
     </div>
