@@ -779,8 +779,8 @@ function renderTournamentView() {
                     html += `<h3 style="color:var(--uha-blue); margin-top: 30px; border-left: 4px solid var(--uha-gold); padding-left: 10px;">Group ${groupIndex + 1}</h3>`;
                 }
 
-                html += `<table class="standings-table" style="margin-bottom: 20px;">
-                    <tr><th style="text-align: center; width: 12.5%;">Group Rank</th><th style="text-align: left; width: 37.5%;">Player / Team</th><th style="text-align: center; width: 12.5%;">Points</th><th style="text-align: center; width: 12.5%;">Match Record</th><th style="text-align: center; width: 12.5%;">Games Won</th><th style="text-align: center; width: 12.5%;">Points Scored</th></tr>`;
+                html += `<div style="overflow-x:auto;"><table class="standings-table" style="margin-bottom: 20px; min-width: 560px;">
+                    <tr><th style="text-align: center; white-space: nowrap; font-size: 11px;">Rank</th><th style="text-align: left; white-space: nowrap; font-size: 11px;">Player / Team</th><th style="text-align: center; white-space: nowrap; font-size: 11px;">Points</th><th style="text-align: center; white-space: nowrap; font-size: 11px;">Record</th><th style="text-align: center; white-space: nowrap; font-size: 11px;">Games</th><th style="text-align: center; white-space: nowrap; font-size: 11px;">Pts Scored</th></tr>`;
                 standings.forEach((s, i) => {
                     html += `<tr>
                         <td style="color:var(--uha-blue); text-align: center; font-weight:bold;">#${i+1}</td>
@@ -791,7 +791,7 @@ function renderTournamentView() {
                         <td style="text-align: center;">${s.totalScore}</td>
                     </tr>`;
                 });
-                html += `</table>`;
+                html += `</table></div>`;
 
                 html += `<div class="rr-match-grid">`;
                 groupMatches.forEach((match, mIdx) => {
