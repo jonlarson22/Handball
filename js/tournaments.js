@@ -839,7 +839,7 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
 
     let actionArea = '';
     const isLive = match.live && match.live.status === 'live';
-    const liveStrip = isLive ? `<div class="live-strip"><span class="live-pulse">●</span> LIVE &middot; Game ${match.live.game || 1} &middot; ${match.live.p1 || 0}&ndash;${match.live.p2 || 0}</div>` : '';
+    const liveStrip = isLive ? `<div class="live-strip"><div><span class="live-pulse">●</span> LIVE &middot; Game ${match.live.game || 1}</div><div class="live-strip-score">${match.live.p1 || 0} &ndash; ${match.live.p2 || 0}</div></div>` : '';
 
     if (isViewingArchive) {
         actionArea = `<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:5px;">Archived - Read Only</div>`;
@@ -1428,6 +1428,10 @@ function liveTeamName(match, side) {
     const t = side === 'p1' ? match.p1 : match.p2;
     return (t && t.name) ? t.name : side.toUpperCase();
 }
+// doubles teams are "A & B" — stack the names in the server picker
+function serverNameHtml(name) {
+    return String(name).split(' & ').map(s => `<div>${s}</div>`).join('');
+}
 function liveGameDone(live) {
     if (!live || live.status !== 'live') return false;
     const t = live.target || 21;
@@ -1458,15 +1462,19 @@ window.closeLiveModal = function() {
 
 window.startLiveScoring = function() {
     const target = parseInt((document.getElementById('live-setup-target') || {}).value) || 21;
-    const winByTwo = !!(document.getElementById('live-setup-deuce') || {}).checked;
     const toLimit = parseInt((document.getElementById('live-setup-to') || {}).value);
     const serverEl = document.querySelector('input[name="live-server"]:checked');
     const live = {
         status: 'live', p1: 0, p2: 0, game: 1, games: [],
-        target: target, winByTwo: winByTwo,
+        target: target, winByTwo: false,
         server: serverEl ? serverEl.value : 'p1',
         timeouts: { p1: 0, p2: 0 }, timeoutLimit: isNaN(toLimit) ? 2 : toLimit,
     };
+    // optimistic: show the scoring view immediately instead of waiting
+    // for the listener round-trip
+    const match = getLiveMatch();
+    if (match) match.live = live;
+    renderLiveOverlay();
     writeLive(live).catch(e => alert('Could not start live scoring: ' + e.message));
 };
 
@@ -1578,14 +1586,12 @@ function renderLiveOverlay() {
             <div style="display:grid;gap:12px;text-align:left;">
                 <div><label style="font-weight:bold;">Points per game</label>
                     <input type="number" id="live-setup-target" class="uha-input" value="21" min="1"></div>
-                <label style="display:flex;gap:8px;align-items:center;">
-                    <input type="checkbox" id="live-setup-deuce"> Must win by 2</label>
                 <div><label style="font-weight:bold;">Timeouts per game (each side)</label>
                     <input type="number" id="live-setup-to" class="uha-input" value="2" min="0"></div>
                 <div><label style="font-weight:bold;">First server</label>
                     <div style="display:flex;gap:8px;margin-top:4px;">
-                        <label style="flex:1;"><input type="radio" name="live-server" value="p1" checked> ${n1}</label>
-                        <label style="flex:1;"><input type="radio" name="live-server" value="p2"> ${n2}</label>
+                        <label class="live-server-opt"><input type="radio" name="live-server" value="p1" checked><span>${serverNameHtml(n1)}</span></label>
+                        <label class="live-server-opt"><input type="radio" name="live-server" value="p2"><span>${serverNameHtml(n2)}</span></label>
                     </div></div>
             </div>
             <div style="display:flex;gap:10px;margin-top:16px;">
