@@ -246,6 +246,24 @@ body {
     text-align: center;
 }
 
+/* ---------- score entry grid ---------- */
+.score-grid {
+    display: grid;
+    grid-template-columns: 52px 1fr 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.score-col-head {
+    font-weight: bold;
+    color: var(--uha-blue);
+    text-align: center;
+    font-size: 14px;
+    overflow-wrap: break-word;
+}
+.score-game-label { font-size: 11px; color: #888; }
+.score-grid .score-input { width: 100% !important; }
+
 /* ---------- role gating ---------- */
 .admin-only { display: none !important; }
 body.admin-mode .admin-only { display: block !important; }
@@ -901,7 +919,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     margin-bottom: 14px;
 }
 .admin-user-row .muted b { color: var(--text-light); }
-.admin-user-row .btn-sm { flex: 0 0 auto; }
+.admin-user-row .btn-sm { flex: 0 0 auto; width: auto; }
 
 .role-row {
     display: flex;

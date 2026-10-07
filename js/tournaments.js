@@ -10,6 +10,11 @@ function updateTournamentAuthUI() {
     // New structure: public bracket lives on the Tournaments tab, setup lives
     // under Admin > Tournaments. This only toggles the management buttons.
     updateVisibility();
+    // Re-render the bracket cards: they may have been built before the user's
+    // role finished loading (public-style buttons for a manager).
+    if (typeof renderTournamentView === 'function' && lockedDivisions && lockedDivisions.length) {
+        renderTournamentView();
+    }
 }
 
 
@@ -907,22 +912,20 @@ window.openScoreModal = function(divIdx, rIdx, mIdx, bType = 'winners') {
 
     let existing = match.scores && match.scores !== 'BYE' ? match.scores.split(',').map(s => s.split('-')) : [];
     
-    let bodyHtml = `<div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:bold; color:var(--uha-blue);">
-        <div style="flex:1; text-align:left;">${p1Name}</div>
-        <div style="flex:1; text-align:right;">${p2Name}</div>
-    </div>`;
+    let bodyHtml = `<div class="score-grid">
+        <div></div>
+        <div class="score-col-head">${p1Name}</div>
+        <div class="score-col-head">${p2Name}</div>`;
 
     for(let i=0; i<3; i++) {
         let s1 = existing[i] ? existing[i][0].trim() : '';
         let s2 = existing[i] ? existing[i][1].trim() : '';
         bodyHtml += `
-        <div class="score-row">
-            <span style="font-size:11px; color:#888; width: 40px; text-align: left;">Game ${i+1}</span>
+            <div class="score-game-label">Game ${i+1}</div>
             <input type="number" class="score-input p1-score" value="${s1}" min="0">
-            <span style="color: #666;">-</span>
-            <input type="number" class="score-input p2-score" value="${s2}" min="0">
-        </div>`;
+            <input type="number" class="score-input p2-score" value="${s2}" min="0">`;
     }
+    bodyHtml += `</div>`;
 
     document.getElementById('score-modal-body').innerHTML = bodyHtml;
     document.getElementById('score-modal').style.display = 'flex';
