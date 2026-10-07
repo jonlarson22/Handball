@@ -264,6 +264,8 @@ body {
 .score-game-label { font-size: 11px; color: #888; }
 .score-grid .score-input { width: 100% !important; }
 
+.btn-sm { width: auto; flex: 0 0 auto; }
+
 /* ---------- live scoring setup ---------- */
 .live-server-opt {
     flex: 1; min-width: 0;
@@ -438,7 +440,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
 }
 :is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) select,
 :is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) input,
-:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) button:not(.admin-subtab):not(.tab):not(.qa-approve):not(.qa-review):not(.qa-reject) {
+:is(#screen-leaderboard, #screen-enter, #screen-history, #screen-admin) button:not(.admin-subtab):not(.tab):not(.qa-approve):not(.qa-review):not(.qa-reject):not(.btn-sm) {
     padding: 12px;
     border-radius: 6px;
     border: 1px solid #444;
@@ -931,7 +933,7 @@ body.admin-mode th.admin-only { display: table-cell !important; }
     margin-bottom: 14px;
 }
 .admin-user-row .muted b { color: var(--text-light); }
-:is(#screen-admin) .admin-user-row .btn-sm { flex: 0 0 auto; width: auto; }
+
 
 .role-row {
     display: flex;
