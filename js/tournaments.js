@@ -281,32 +281,20 @@ function renderLockedDivisions() {
         divLog.innerHTML += `
             <div style="background: rgba(52, 152, 219, 0.1); padding: 8px; border-radius: 4px; margin-bottom: 5px; border-left: 3px solid var(--uha-blue);">
                 ✅ Locked: <b>${div.name}</b> (${div.mode} · ${formatLabel(div.format)}) - ${div.participants.length} entries
-                <button class="unlock-btn" onclick="unlockDivision(${index})">Unlock</button>
+                <button class="unlock-btn" style="border-color:#e74c3c; color:#e74c3c;" onclick="deleteLockedDivision(${index})">Delete</button>
             </div>
         `;
     });
+    if (lockedDivisions.length > 0) {
+        divLog.innerHTML += `<div style="font-size:12px; color:var(--text-muted); margin-top:6px;">To change players on a live bracket, use the \u21c4 swap buttons on the bracket. To fix a score, use Edit Score on the match.</div>`;
+    }
 }
 
-window.unlockDivision = function(index) {
-    const divToUnlock = lockedDivisions.splice(index, 1)[0];
-    const nameInput = document.getElementById('division-name');
-    if (nameInput) nameInput.value = divToUnlock.name;
-    
-    divToUnlock.participants.forEach(p => {
-        const slot = document.createElement('div');
-        slot.className = divToUnlock.mode === "Singles" ? 'singles-slot' : 'team-slot';
-        slot.dataset.finalName = p.name;
-        slot.dataset.finalElo = p.elo;
-        slot.dataset.ids = JSON.stringify(p.ids || []);
-
-        slot.innerHTML = `
-            <div style="font-weight: bold;">
-                ${p.name} <span style="color:var(--uha-blue); margin-left:10px;">${Math.round(p.elo)}</span>
-            </div>
-            <button class="remove-team-btn">X</button>
-        `;
-        teamDraftArea.appendChild(slot);
-    });
+window.deleteLockedDivision = function(index) {
+    const div = lockedDivisions[index];
+    if (!div) return;
+    if (!confirm(`Delete the event "${div.name}"? This removes its bracket. This cannot be undone.`)) return;
+    lockedDivisions.splice(index, 1);
     renderLockedDivisions();
 };
 
@@ -1339,7 +1327,7 @@ function loadTournamentData(path) {
 
 window.editActiveTournament = function() {
     if (!canManageTournaments()) return;
-    if (!confirm("This will pull the current live tournament back into the setup area. You can then 'Unlock' events to edit players. Ready?")) return;
+    if (!confirm("This will pull the current live tournament back into the setup area so you can add or delete events. Player swaps and score fixes are done directly on the bracket. Ready?")) return;
 
     db.ref('tournaments/active').once('value').then((snapshot) => {
         const data = snapshot.val();
@@ -1362,7 +1350,7 @@ window.editActiveTournament = function() {
         renderLockedDivisions();
         renderRoster();
         
-        alert("Setup reloaded. Use the 'Unlock' buttons below to make changes to specific events.");
+        alert("Setup reloaded. Add new events below, or delete events from the locked list. For player/score changes, use the bracket directly.");
     });
 };
 
