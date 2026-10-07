@@ -938,10 +938,7 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
             <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Live</button>
         </div>`;
     } else if (!hasScore) {
-        actionArea = `<div style="display:flex; gap:6px; justify-content:center;">
-            <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>
-            <button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#e74c3c;" onclick="openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">🔴 Live</button>
-        </div>`;
+        actionArea = `<button class="uha-btn" style="width:auto; padding:5px 10px; font-size:12px; background:#27ae60;" onclick="openScoreChooser(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Enter Score</button>`;
     } else if (hasScore && canManageTournaments()) {
         actionArea = `<button class="uha-btn uha-btn-blue" style="width:auto; padding:5px 10px; font-size:11px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bracketType}')">Edit Score</button>`;
     } else {
@@ -1677,6 +1674,41 @@ function queueTournamentResult(divIdx, rIdx, mIdx, bType, gameScores, source, ke
    through the existing tournament listener. */
 let liveCtx = null;
 let liveEndAck = false; // game-end interstitial already shown for this game
+const liveSessionId = 's' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+let liveHeartbeat = null;
+const LOCK_TTL_MS = 60000; // a lock older than this is considered abandoned
+
+function liveLockFresh(live) {
+    return live && live.lockId && live.lockId !== liveSessionId &&
+        live.lockAt && (Date.now() - live.lockAt) < LOCK_TTL_MS;
+}
+function startLiveHeartbeat() {
+    stopLiveHeartbeat();
+    liveHeartbeat = setInterval(() => {
+        if (!liveCtx) return stopLiveHeartbeat();
+        db.ref(liveNodePath()).transaction(live => {
+            if (!live || live.status !== 'live') return live;
+            // only refresh if I still hold it (or it's mine/stale)
+            if (!live.lockId || live.lockId === liveSessionId || (live.lockAt && (Date.now() - live.lockAt) >= LOCK_TTL_MS)) {
+                live.lockId = liveSessionId;
+                live.lockAt = Date.now();
+            }
+            return live;
+        });
+    }, 15000);
+}
+function stopLiveHeartbeat() {
+    if (liveHeartbeat) { clearInterval(liveHeartbeat); liveHeartbeat = null; }
+}
+function releaseLiveLock() {
+    stopLiveHeartbeat();
+    if (!liveCtx) return;
+    db.ref(liveNodePath()).transaction(live => {
+        if (!live) return live;
+        if (live.lockId === liveSessionId) { live.lockId = null; live.lockAt = 0; }
+        return live;
+    });
+}
 
 function liveBracketKey(bType) {
     return bType === 'finals' ? 'finalsBracket'
@@ -1716,6 +1748,31 @@ function liveGameDone(live) {
     return true;
 }
 
+/* Unified score entry: one button -> choose live scoring or final score */
+window.openScoreChooser = function(divIdx, rIdx, mIdx, bType = 'winners') {
+    const div = lockedDivisions[divIdx];
+    const br = div ? div[liveBracketKey(bType)] : null;
+    const match = br && br[rIdx] && br[rIdx][mIdx];
+    const n1 = match && match.p1 ? match.p1.name : 'TBD';
+    const n2 = match && match.p2 ? match.p2.name : 'TBD';
+    const liveActive = !!(match && match.live && match.live.status === 'live');
+    const locked = liveActive && liveLockFresh(match.live);
+    const who = locked && match.live.keeper ? ` (${match.live.keeper})` : '';
+    const body = document.getElementById('score-modal-body');
+    document.getElementById('score-modal-title').innerText = `${n1} vs ${n2}`;
+    body.innerHTML = `
+        <p class="muted" style="text-align:center; margin-top:0;">How do you want to enter this score?</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button class="uha-btn" style="background:#e74c3c; padding:14px;${locked ? ' opacity:0.7;' : ''}" onclick="closeScoreModal(); openLiveScoring(${divIdx}, ${rIdx}, ${mIdx}, '${bType}')">
+                🔴 Live Scoring${locked ? `<div style="font-size:11px; font-weight:normal;">In use${who} — tap for options</div>` : '<div style="font-size:11px; font-weight:normal;">Score point-by-point in real time</div>'}
+            </button>
+            <button class="uha-btn uha-btn-blue" style="padding:14px;" onclick="openScoreModal(${divIdx}, ${rIdx}, ${mIdx}, '${bType}')">
+                📝 Enter Final Score<div style="font-size:11px; font-weight:normal;">Type in the completed game scores</div>
+            </button>
+        </div>`;
+    document.getElementById('score-modal').style.display = 'flex';
+};
+
 window.openLiveScoring = function(divIdx, rIdx, mIdx, bType = 'winners') {
     if (typeof currentTourneyPath !== 'undefined' && currentTourneyPath !== 'active') {
         alert('Live scoring is only available on the active tournament.');
@@ -1723,11 +1780,37 @@ window.openLiveScoring = function(divIdx, rIdx, mIdx, bType = 'winners') {
     }
     liveCtx = { divIdx, rIdx, mIdx, bType };
     liveEndAck = false;
+    const match = getLiveMatch();
+    const existing = match && match.live;
+    if (existing && existing.status === 'live' && liveLockFresh(existing)) {
+        const who = existing.keeper ? ` (${existing.keeper})` : '';
+        const body = document.getElementById('live-modal-body');
+        const modal = document.getElementById('live-modal');
+        if (modal) modal.style.display = 'flex';
+        if (body) body.innerHTML = `
+            <h2 style="color:var(--uha-gold);margin-top:0;">Scorekeeper Active</h2>
+            <p>Someone${who} is currently scoring this match on another device.</p>
+            <p class="muted" style="font-size:12px;">Only one scorekeeper at a time. If they've left, you can take over.</p>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+                <button class="uha-btn" style="flex:1;background:#e74c3c;" onclick="takeOverLive()">Take Over</button>
+                <button class="uha-btn-outline" style="flex:1;" onclick="closeLiveModal()">Cancel</button>
+            </div>`;
+        return;
+    }
     const modal = document.getElementById('live-modal');
     if (modal) modal.style.display = 'flex';
     renderLiveOverlay();
 };
+window.takeOverLive = function() {
+    const match = getLiveMatch();
+    if (match && match.live) { match.live.lockId = liveSessionId; match.live.lockAt = Date.now(); }
+    // force the lock over, then heartbeat keeps it
+    db.ref(liveNodePath()).update({ lockId: liveSessionId, lockAt: Date.now() }).catch(() => {});
+    startLiveHeartbeat();
+    renderLiveOverlay();
+};
 window.closeLiveModal = function() {
+    releaseLiveLock();
     const modal = document.getElementById('live-modal');
     if (modal) modal.style.display = 'none';
     liveCtx = null;
@@ -1745,7 +1828,9 @@ window.startLiveScoring = function() {
         server: serverEl ? serverEl.value : 'p1',
         timeouts: { p1: 0, p2: 0 }, timeoutLimit: isNaN(toLimit) ? 2 : toLimit,
         keeper: keeper,
+        lockId: liveSessionId, lockAt: Date.now(),
     };
+    startLiveHeartbeat();
     // optimistic: show the scoring view immediately instead of waiting
     // for the listener round-trip
     const match = getLiveMatch();
