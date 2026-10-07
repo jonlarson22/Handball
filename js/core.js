@@ -85,16 +85,45 @@ function setConnectionStatus(ok) {
 }
 
 /* ---------- navigation ---------- */
-function switchScreen(name) {
+function currentScreenName() {
+    const vis = document.querySelector('.screen:not([hidden])');
+    return vis ? vis.id.replace('screen-', '') : 'leaderboard';
+}
+function switchScreen(name, push = true) {
     document.querySelectorAll('#app-tabs .app-tab').forEach(t =>
         t.classList.toggle('active', t.dataset.screen === name));
     document.querySelectorAll('.screen').forEach(s => {
         s.hidden = (s.id !== 'screen-' + name);
     });
     window.scrollTo(0, 0);
+    try {
+        if (push) history.pushState({ screen: name }, '');
+        else history.replaceState({ screen: name }, '');
+    } catch (e) {}
 }
 document.querySelectorAll('#app-tabs .app-tab').forEach(t =>
     t.addEventListener('click', () => switchScreen(t.dataset.screen)));
+
+// Android system back button: walk back through screens / close overlays
+// instead of exiting the app. Falls back to the main page when there's
+// no app history left.
+window.addEventListener('popstate', (e) => {
+    const lm = document.getElementById('live-modal');
+    const sm = document.getElementById('score-modal');
+    const liveOpen = lm && lm.style.display !== 'none';
+    const scoreOpen = sm && sm.style.display !== 'none';
+    if (liveOpen || scoreOpen) {
+        if (liveOpen && typeof closeLiveModal === 'function') closeLiveModal();
+        if (scoreOpen && typeof closeScoreModal === 'function') closeScoreModal();
+        // cancel the pop: stay on the current screen
+        try { history.pushState({ screen: currentScreenName() }, ''); } catch (err) {}
+        return;
+    }
+    const target = (e.state && e.state.screen) || 'leaderboard';
+    if (document.getElementById('screen-' + target)) switchScreen(target, false);
+    else switchScreen('leaderboard', false);
+});
+try { history.replaceState({ screen: 'leaderboard' }, ''); } catch (e) {}
 
 let activeAdminTab = 'review';
 const ADMIN_TABS = ['review', 'players', 'tournaments', 'data', 'roles'];
