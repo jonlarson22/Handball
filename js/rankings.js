@@ -925,8 +925,15 @@ function eloGraphSVG(seriesList) {
     const paths = seriesList.map(s => {
         if (!s.pts.length) return '';
         const d = s.pts.map((p, i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ',' + Y(p.elo).toFixed(1)).join(' ');
-        const dots = s.pts.filter(p => p.m).map(p =>
-            `<circle cx="${X(p.t).toFixed(1)}" cy="${Y(p.elo).toFixed(1)}" r="3.5" fill="${s.color}"/>`).join('');
+        const dots = s.pts.filter(p => p.m).map(p => {
+            const m = p.m;
+            const won = (m.winners || []).some(id => id == reportPlayerId);
+            const opps = [...(won ? m.losers : m.winners) || []].map(playerName).join(' / ');
+            const tip = (fmtDate(p.t) + ' · ' + s.label + '\\nELO ' + Math.round(p.elo) + (opps ? '\\n' + (won ? 'W' : 'L') + ' vs ' + opps + (m.score ? ' (' + m.score + ')' : '') : '')).replace(/'/g, "\\'");
+            const esc = tip.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+            return `<circle cx="${X(p.t).toFixed(1)}" cy="${Y(p.elo).toFixed(1)}" r="3.5" fill="${s.color}" style="cursor:pointer;"`
+                + ` onmousemove="showGraphTip(event, &quot;${esc}&quot;)" onmouseleave="hideGraphTip()" onclick="showGraphTip(event, &quot;${esc}&quot;)"/>`;
+        }).join('');
         return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5"/>${dots}`;
     }).join('');
     const legend = seriesList.length > 1
@@ -935,6 +942,27 @@ function eloGraphSVG(seriesList) {
     const dates = `<text x="${PL}" y="${H - 8}" fill="#888" font-size="11">${fmtDate(minT)}</text>` +
         `<text x="${W - PR}" y="${H - 8}" fill="#888" font-size="11" text-anchor="end">${fmtDate(maxT)}</text>`;
     return `${legend}<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;background:#141414;border-radius:8px;" role="img">${g}${paths}${dates}</svg>`;
+}
+function showGraphTip(e, text) {
+    let tip = document.getElementById('graph-tip');
+    if (!tip) {
+        tip = document.createElement('div');
+        tip.id = 'graph-tip';
+        tip.style.cssText = 'position:fixed;z-index:9999;background:#000;border:1px solid #555;color:#fff;font-size:12px;padding:8px 10px;border-radius:6px;pointer-events:none;white-space:pre-line;max-width:220px;box-shadow:0 2px 8px rgba(0,0,0,0.6);';
+        document.body.appendChild(tip);
+    }
+    tip.textContent = text;
+    tip.style.display = 'block';
+    const x = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX) || 0;
+    const y = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY) || 0;
+    tip.style.left = Math.min(window.innerWidth - 230, x + 12) + 'px';
+    tip.style.top = Math.max(8, y - 10 - tip.offsetHeight) + 'px';
+    clearTimeout(tip._t);
+    tip._t = setTimeout(() => tip.style.display = 'none', 4000);
+}
+function hideGraphTip() {
+    const tip = document.getElementById('graph-tip');
+    if (tip) tip.style.display = 'none';
 }
 function renderReport() {
     const body = document.getElementById('report-body');
@@ -1029,7 +1057,7 @@ function renderReport() {
         return `<tr>
             <td style="white-space:nowrap;font-size:11px;">${fmtDate(matchTime(m))}</td>
             <td style="text-align:center;color:${won ? '#2ecc71' : '#e74c3c'};font-weight:bold;">${won ? 'W' : 'L'}</td>
-            <td style="font-size:11px;">${opps}${partner ? `<div class="muted">w/ ${partner}</div>` : ''}<div class="muted">${mode}</div></td>
+            <td style="font-size:11px;">${opps}${partner ? `<div class="muted">w/ ${partner}</div>` : ''}</td>
             <td style="text-align:center;font-size:11px;">${m.score || ''}${scores ? `<div class="muted">(${scores})</div>` : ''}</td>
             <td style="text-align:center;" class="${shift >= 0 ? 'shift-plus' : 'shift-minus'}">${shift > 0 ? '+' : ''}${shift}</td>
         </tr>`;

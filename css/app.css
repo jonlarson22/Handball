@@ -178,6 +178,11 @@ body {
 .report-stat-grid b { font-size: 20px; }
 .report-stat-grid small { color: #888; font-size: 11px; }
 #report-body .panel { margin-bottom: 14px; }
+/* player report: row separators on screen */
+#report-body table { border-collapse: collapse; }
+#report-body tbody tr td { border-bottom: 1px solid #2e2e2e; }
+#report-body thead tr { border-bottom: 2px solid #555; }
+
 @media print {
     .topbar, .app-tabs, .app-foot, #report-filters, .report-back, .page-head { display: none !important; }
     body { background: #fff !important; color: #000 !important; }
