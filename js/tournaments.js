@@ -868,18 +868,22 @@ function generateMatchCardHTML(match, divIdx, rIdx, mIdx, bracketType = 'winners
         actionArea = `<div style="color:var(--uha-gold); font-size:11px; text-align:center; padding:5px; font-weight:bold;">Complete</div>`;
     }
 
+    const canSwap = canManageTournaments() && !isViewingArchive;
+    const swapBtn = (side, team) => (canSwap && team && team !== 'BYE' && team !== 'TBD')
+        ? ` <button class="swap-btn" title="Swap player" onclick="event.stopPropagation();openSwapPicker(${divIdx},${rIdx},${mIdx},'${bracketType}','${side}')">⇄</button>`
+        : '';
     return `
         <div class="match-card">
             <div style="flex:1;">
                 <div class="match-team ${classA}">
-                    <span>${teamA}</span>
+                    <span>${teamA}${swapBtn('p1', teamA)}</span>
                     <span>${scoreA}</span>
                 </div>
 
                 <div class="match-vs" style="color: #3498db; margin: 2px 0;">vs</div>
 
                 <div class="match-team ${classB}">
-                    <span>${teamB}</span>
+                    <span>${teamB}${swapBtn('p2', teamB)}</span>
                     <span>${scoreB}</span>
                 </div>
 
@@ -1391,6 +1395,134 @@ loadArchiveList();
 onPlayersUpdate(refreshRosterFromDB);
 
 loadTournamentData('active');
+
+/* ================= participant swap =================
+   Swap a player/team in a bracket slot without destroying the bracket.
+   The new team inherits the slot; future (undecided) matches showing the
+   old team are updated. Decided matches (history) are left alone. */
+let swapCtx = null;
+let swapPicks = [];
+
+function swapBracket(div, bType) {
+    if (bType === 'finals') return div.finalsBracket;
+    if (bType === 'losers') return div.losersBracket;
+    if (bType === 'third_place') return div.thirdPlaceMatch;
+    return div.bracket;
+}
+
+window.openSwapPicker = function(divIdx, rIdx, mIdx, bType = 'winners', side = 'p1') {
+    if (typeof canManageTournaments === 'function' && !canManageTournaments()) return;
+    const div = lockedDivisions[divIdx];
+    const br = swapBracket(div, bType);
+    const match = br && br[rIdx] && br[rIdx][mIdx];
+    if (!match || !match[side]) return;
+    swapCtx = { divIdx, rIdx, mIdx, bType, side };
+    swapPicks = [];
+    const sub = document.getElementById('swap-modal-sub');
+    const oldName = match[side].name || side.toUpperCase();
+    const need = (div.mode && div.mode.toLowerCase() === 'doubles') ? 2 : 1;
+    if (sub) sub.textContent = `Replacing ${oldName} — select ${need === 1 ? 'a player' : '2 players'}. Future undecided matches update too; decided matches are left as history.`;
+    const search = document.getElementById('swap-search');
+    if (search) search.value = '';
+    renderSwapList();
+    document.getElementById('swap-modal').style.display = 'flex';
+};
+
+window.closeSwapPicker = function() {
+    document.getElementById('swap-modal').style.display = 'none';
+    swapCtx = null;
+    swapPicks = [];
+};
+
+window.renderSwapList = function() {
+    const list = document.getElementById('swap-list');
+    if (!list || !swapCtx) return;
+    const q = (document.getElementById('swap-search').value || '').toLowerCase();
+    const div = lockedDivisions[swapCtx.divIdx];
+    const isDoubles = div.mode && div.mode.toLowerCase() === 'doubles';
+    const eloKey = isDoubles ? 'doubles' : 'singles';
+    list.innerHTML = '';
+    (players || [])
+        .filter(pl => !q || (pl.name || '').toLowerCase().includes(q))
+        .slice(0, 60)
+        .forEach(pl => {
+            const sel = swapPicks.includes(pl.id) ? ' selected' : '';
+            const row = document.createElement('div');
+            row.className = 'swap-pick' + sel;
+            row.innerHTML = `<span><b>${pl.name}</b> <span class="muted">#${pl.id}</span></span><span>${Math.round(pl[eloKey] || 1000)}</span>`;
+            row.onclick = () => toggleSwapPick(pl.id, isDoubles);
+            list.appendChild(row);
+        });
+};
+
+window.toggleSwapPick = function(id, isDoubles) {
+    if (!isDoubles) {
+        swapPicks = [id];
+    } else {
+        const i = swapPicks.indexOf(id);
+        if (i >= 0) swapPicks.splice(i, 1);
+        else if (swapPicks.length < 2) swapPicks.push(id);
+    }
+    renderSwapList();
+};
+
+function swapTeamEq(a, b) {
+    if (!a || !b) return false;
+    const ka = JSON.stringify((a.ids || []).map(Number).sort());
+    const kb = JSON.stringify((b.ids || []).map(Number).sort());
+    return ka.length > 2 && ka === kb;
+}
+
+window.confirmSwap = function() {
+    if (!swapCtx) return;
+    const { divIdx, rIdx, mIdx, bType, side } = swapCtx;
+    const div = lockedDivisions[divIdx];
+    const isDoubles = div.mode && div.mode.toLowerCase() === 'doubles';
+    const need = isDoubles ? 2 : 1;
+    if (swapPicks.length !== need) {
+        alert(isDoubles ? 'Select 2 players for a doubles team.' : 'Select a player.');
+        return;
+    }
+    const picked = swapPicks.map(id => (players || []).find(p => p.id == id)).filter(Boolean);
+    if (picked.length !== need) return alert('Player not found.');
+    const eloKey = isDoubles ? 'doubles' : 'singles';
+    const avgElo = Math.round(picked.reduce((t, p) => t + (parseFloat(p[eloKey]) || 1000), 0) / picked.length);
+    const newTeam = {
+        name: picked.map(p => p.name).join(' & '),
+        ids: picked.map(p => p.id),
+        elo: avgElo,
+    };
+
+    const br = swapBracket(div, bType);
+    const match = br[rIdx][mIdx];
+    const oldTeam = match[side];
+    if (!confirm(`Replace ${oldTeam.name || side.toUpperCase()} with ${newTeam.name}?`)) return;
+
+    // swap in this match
+    match[side] = newTeam;
+
+    // propagate to future undecided matches (all brackets); leave history alone
+    ['winners', 'losers', 'finals', 'third_place'].forEach(bt => {
+        const b = swapBracket(div, bt);
+        if (!b) return;
+        b.forEach((round, ri) => {
+            (round || []).forEach((m, mi) => {
+                if (!m || m.winner) return;
+                if (bt === bType && ri === rIdx && mi === mIdx) return; // source already done
+                if (swapTeamEq(m.p1, oldTeam)) m.p1 = newTeam;
+                if (swapTeamEq(m.p2, oldTeam)) m.p2 = newTeam;
+            });
+        });
+    });
+
+    db.ref('tournaments/active').update({ divisions: lockedDivisions })
+        .then(() => {
+            closeSwapPicker();
+            renderTournamentView();
+            if (typeof showToast === 'function') showToast(`Swapped in ${newTeam.name}.`);
+        })
+        .catch(e => alert('Could not save swap: ' + e.message));
+};
 
 /* ================= live scoring =================
    Each bracket match can carry match.live = {

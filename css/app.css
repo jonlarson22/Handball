@@ -266,6 +266,21 @@ body {
 
 .btn-sm { width: auto; flex: 0 0 auto; }
 
+/* ---------- swap picker ---------- */
+.swap-btn {
+    background: none; border: 1px solid #555; border-radius: 4px;
+    color: var(--uha-gold); font-size: 12px; padding: 1px 6px; margin-left: 6px;
+    cursor: pointer; width: auto !important; flex: 0 0 auto;
+}
+.swap-btn:hover { border-color: var(--uha-gold); }
+.swap-pick {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; border: 1px solid #333; border-radius: 6px;
+    margin-bottom: 6px; cursor: pointer;
+}
+.swap-pick:hover { border-color: var(--uha-blue); }
+.swap-pick.selected { border-color: var(--uha-gold); background: rgba(241,196,15,0.08); }
+
 /* ---------- live scoring setup ---------- */
 .live-server-opt {
     flex: 1; min-width: 0;

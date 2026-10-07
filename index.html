@@ -434,6 +434,19 @@
     </div>
 </div>
 
+<div id="swap-modal" class="uha-modal" style="display:none;">
+    <div class="uha-modal-content" style="max-width: 500px;">
+        <h2 style="color: var(--uha-gold);">Swap Player</h2>
+        <p id="swap-modal-sub" style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;"></p>
+        <input type="text" id="swap-search" class="uha-input" placeholder="Search players..." style="width: 100%; margin-bottom: 10px;" oninput="renderSwapList()">
+        <div id="swap-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 12px;"></div>
+        <div style="display: flex; gap: 10px;">
+            <button id="swap-confirm-btn" class="uha-btn uha-btn-gold" style="flex:1;" onclick="confirmSwap()">Swap</button>
+            <button class="uha-btn-outline" style="flex:1;" onclick="closeSwapPicker()">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <div id="manual-move-modal" class="uha-modal" style="display:none;">
     <div class="uha-modal-content" style="max-width: 500px;">
         <h2 style="color: var(--uha-gold);">Manual Move Tool</h2>
