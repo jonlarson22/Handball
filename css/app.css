@@ -112,14 +112,16 @@ body {
 /* ---------- admin sub-tabs ---------- */
 .admin-subtabs {
     display: flex;
+    flex-direction: column;
     gap: 6px;
-    flex-wrap: wrap;
     background: var(--bg-deep);
     padding: 6px;
     border-radius: 10px;
     margin-bottom: 14px;
     border: 1px solid var(--border-color);
 }
+.astab-row { display: flex; gap: 6px; }
+.astab-row .admin-subtab { flex: 1; }
 .admin-subtab {
     flex: 1 1 0;
     padding: 10px 6px;

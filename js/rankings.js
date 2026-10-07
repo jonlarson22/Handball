@@ -125,9 +125,11 @@ function loadEditData() {
         const inputD = parseFloat(document.getElementById('editD').value);
 
         if(!isNaN(inputS) && inputS !== p.singles) {
+            (p.adjustments = p.adjustments || []).push({ t: Date.now(), mode: 'singles', from: p.singles, to: inputS });
             p.singles = inputS; p.baseS = inputS; p.peakS = inputS;
         }
         if(!isNaN(inputD) && inputD !== p.doubles) {
+            (p.adjustments = p.adjustments || []).push({ t: Date.now(), mode: 'doubles', from: p.doubles, to: inputD });
             p.doubles = inputD; p.baseD = inputD; p.peakD = inputD;
         }
         save(); 
@@ -933,6 +935,42 @@ function renderReport() {
     });
 
     allMs.sort((a, b) => matchTime(b.m) - matchTime(a.m));
+
+    // manual rating adjustments (logged by updatePlayer)
+    const pl = players.find(x => x.id == reportPlayerId);
+    let adjList = (pl && pl.adjustments) || [];
+    if (fromT) adjList = adjList.filter(a => a.t >= fromT);
+    if (toT) adjList = adjList.filter(a => a.t <= toT + 86399999);
+    if (reportMode !== 'both') adjList = adjList.filter(a => (a.mode || 'singles') === reportMode);
+    adjList = adjList.slice().sort((a, b) => b.t - a.t);
+    const adjRows = adjList.map(a => {
+        const lbl = (a.mode || 'singles')[0].toUpperCase() + (a.mode || 'singles').slice(1);
+        const delta = Math.round((a.to - a.from) * 10) / 10;
+        return `<tr>
+            <td style="white-space:nowrap;font-size:11px;">${fmtDate(a.t)}</td>
+            <td style="text-align:center;font-size:11px;"><span style="background:#6c3483;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;">ADJ</span></td>
+            <td style="font-size:11px;">${lbl}<div class="muted">manual adjustment</div></td>
+            <td style="text-align:center;font-size:11px;">${Math.round(a.from)} → ${Math.round(a.to)}</td>
+            <td style="text-align:center;" class="${delta >= 0 ? 'shift-plus' : 'shift-minus'}">${delta > 0 ? '+' : ''}${delta}</td>
+        </tr>`;
+    }).join('');
+    const adjSection = adjList.length ? `
+        <div class="panel">
+            <h3 style="margin-top:0;">Rating Adjustments (${adjList.length})</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr style="background:#222;">
+                    <th style="padding:8px;text-align:left;">Date</th>
+                    <th style="padding:8px;"></th>
+                    <th style="padding:8px;text-align:left;">Type</th>
+                    <th style="padding:8px;">Change</th>
+                    <th style="padding:8px;">ELO</th>
+                </tr></thead>
+                <tbody>${adjRows}</tbody>
+            </table>
+            </div>
+        </div>` : '';
+
     const rows = allMs.slice(0, 100).map(({ m, mode }) => {
         const won = (m.winners || []).some(id => id == reportPlayerId);
         const isD = mode === 'doubles';
@@ -951,7 +989,7 @@ function renderReport() {
         </tr>`;
     }).join('');
 
-    body.innerHTML = summaryHtml + `
+    body.innerHTML = summaryHtml + adjSection + `
         <div class="panel">
             <h3 style="margin-top:0;">ELO Over Time</h3>
             ${eloGraphSVG(seriesList)}

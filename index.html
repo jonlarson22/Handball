@@ -179,11 +179,15 @@
             <button class="uha-btn-outline btn-sm" onclick="logoutUser()">Logout</button>
         </div>
         <nav class="admin-subtabs" id="admin-subtabs">
-            <button class="admin-subtab active" data-astab="review">Review</button>
-            <button class="admin-subtab" data-astab="players">Players</button>
-            <button class="admin-subtab" data-astab="tournaments">Tournaments</button>
-            <button class="admin-subtab" data-astab="data">Data</button>
-            <button class="admin-subtab" data-astab="roles" id="astab-roles">Roles</button>
+            <div class="astab-row">
+                <button class="admin-subtab active" data-astab="review">Review</button>
+                <button class="admin-subtab" data-astab="players">Players</button>
+                <button class="admin-subtab" data-astab="tournaments">Tournaments</button>
+            </div>
+            <div class="astab-row">
+                <button class="admin-subtab" data-astab="data">Data</button>
+                <button class="admin-subtab" data-astab="roles" id="astab-roles">Roles</button>
+            </div>
         </nav>
         <div id="admin-review" class="ascreen"><div id="adminQueue" style="margin-bottom: 25px;"></div></div>
         <div id="admin-players" class="ascreen" hidden><div class="panel">
