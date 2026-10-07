@@ -167,7 +167,14 @@ function loadEditData() {
 
     if (isAdmin) {
         calculateAndAddMatch(activeMode, winners, losers, games);
-        save(); 
+        save();
+        if (editingPendingKey) {
+            db.ref(`pending/${editingPendingKey}`).remove()
+                .catch(err => console.error("Error removing edited match:", err));
+            editingPendingKey = null;
+            const banner = document.getElementById('edit-pending-banner');
+            if (banner) banner.style.display = 'none';
+        }
         showToast("Match recorded and rankings updated!");
     } else {
         db.ref('pending').push({
@@ -339,9 +346,15 @@ function approveMatch(index) {
     }
 }
 
+let editingPendingKey = null;
 function reviewSub(index) {
     const m = pending[index];
     if (!m) return;
+
+    // stash the key — the old entry is only removed AFTER a successful resubmit
+    editingPendingKey = m.firebaseKey || null;
+    const banner = document.getElementById('edit-pending-banner');
+    if (banner) banner.style.display = 'block';
 
     setMode(m.mode || 'singles');
 
@@ -372,15 +385,20 @@ function reviewSub(index) {
         });
     }
 
-   if (m.firebaseKey) {
-        db.ref(`pending/${m.firebaseKey}`).remove()
-            .then(() => console.log("Match moved to Editor."))
-            .catch(err => console.error("Error removing match:", err));
-    }
-    
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    showToast("Match loaded. Review then click 'SUBMIT SCORE' to finalize.");
+    showToast("Match loaded for editing. Submit to save, or Cancel to keep the original.");
 }
+
+window.cancelPendingEdit = function() {
+    editingPendingKey = null;
+    const banner = document.getElementById('edit-pending-banner');
+    if (banner) banner.style.display = 'none';
+    ['g1_w','g1_l','g2_w','g2_l','g3_w','g3_l'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    showToast('Edit cancelled — the original is still in the queue.');
+};
 
 function rejectSub(index) {
     const m = pending[index];
