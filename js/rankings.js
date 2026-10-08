@@ -88,17 +88,19 @@ function showToast(message, isError = false) {
 }
 
 function addPlayer() {
-    const n = document.getElementById('addN').value.trim();
+    const firstN = document.getElementById('addFirst').value.trim();
+    const lastN = document.getElementById('addLast').value.trim();
     const isMem = document.getElementById('addMember').checked;
-    if(!n) return;
+    if(!firstN && !lastN) return;
     getNextPlayerId().then(id => {
         players.push({
-            id: id, name: n, singles: 1000, doubles: 1000,
+            id: id, firstName: firstN, lastName: lastN, singles: 1000, doubles: 1000,
             baseS: 1000, baseD: 1000, peakS: 1000, peakD: 1000,
             active: true, isMember: isMem
         });
         save();
-        document.getElementById('addN').value = '';
+        document.getElementById('addFirst').value = '';
+        document.getElementById('addLast').value = '';
         filterTable();
         if (typeof showToast === 'function') showToast(`Player added — ID #${id}`);
     }).catch(e => alert('Could not assign a player ID: ' + e.message));
@@ -107,7 +109,8 @@ function addPlayer() {
 function loadEditData() {
     const p = players.find(x => x.id == document.getElementById('editList').value);
     if(p) { 
-        document.getElementById('editN').value = p.name; 
+        document.getElementById('editFirst').value = p.firstName || ''; 
+        document.getElementById('editLast').value = p.lastName || ''; 
         document.getElementById('editS').value = p.singles; 
         document.getElementById('editD').value = p.doubles; 
     }
@@ -115,10 +118,12 @@ function loadEditData() {
 
     function updatePlayer() {
     const p = players.find(x => x.id == document.getElementById('editList').value);
-    const newName = document.getElementById('editN').value.trim();
+    const newFirst = document.getElementById('editFirst').value.trim();
+    const newLast = document.getElementById('editLast').value.trim();
     
-    if(p && newName) { 
-        p.name = newName; 
+    if(p && (newFirst || newLast)) { 
+        p.firstName = newFirst;
+        p.lastName = newLast; 
         p.isMember = document.getElementById('editMember').checked;
         
         const inputS = parseFloat(document.getElementById('editS').value);

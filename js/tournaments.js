@@ -189,21 +189,24 @@ function updateTeamElo(teamDiv) {
 }
 
 document.getElementById('btn-add-player').addEventListener('click', () => {
-    const nameStr = document.getElementById('new-player-name').value.trim();
+    const firstName = document.getElementById('new-player-first').value.trim();
+    const lastName = document.getElementById('new-player-last').value.trim();
     const singlesVal = parseFloat(document.getElementById('new-player-singles').value) || 1000;
     const doublesVal = parseFloat(document.getElementById('new-player-doubles').value) || 1000;
     const isMember = document.getElementById('new-player-member').checked;
     
-    if (!nameStr) return alert("Enter a player name");
+    if (!firstName && !lastName) return alert("Enter a player name");
     
-    if (allPlayers.some(p => p.name.toLowerCase() === nameStr.toLowerCase())) {
+    const fullName = (firstName + ' ' + lastName).trim().toLowerCase();
+    if (allPlayers.some(p => ((p.firstName||'') + ' ' + (p.lastName||'')).trim().toLowerCase() === fullName)) {
         return alert("Player already exists in the database.");
     }
 
     getNextPlayerId().then(id => {
         const newPlayer = {
             id: id,
-            name: nameStr,
+            firstName: firstName,
+            lastName: lastName,
             singles: singlesVal,
             doubles: doublesVal,
             baseS: singlesVal,
@@ -216,7 +219,8 @@ document.getElementById('btn-add-player').addEventListener('click', () => {
 
         allPlayers.push(newPlayer);
         return db.ref('players').set(allPlayers).then(() => {
-            document.getElementById('new-player-name').value = '';
+            document.getElementById('new-player-first').value = '';
+            document.getElementById('new-player-last').value = '';
             document.getElementById('new-player-singles').value = '1000';
             document.getElementById('new-player-doubles').value = '1000';
             document.getElementById('new-player-member').checked = true;
