@@ -1,1 +1,17 @@
-{"background_color":"#121212","display":"standalone","icons":[{"sizes":"512x512","src":"icon.png","type":"image/png"}],"id":"https://jonlarson22.github.io/Handball/","name":"Handball — Utah Handball Association","scope":"/Handball/","short_name":"Handball","start_url":"index.html","theme_color":"#3498db"}
+{
+  "background_color": "#121212",
+  "display": "standalone",
+  "icons": [
+    {
+      "sizes": "512x512",
+      "src": "icon.png",
+      "type": "image/png"
+    }
+  ],
+  "id": "uha-handball-f46a460d",
+  "name": "Handball \u2014 Utah Handball Association",
+  "scope": "https://jonlarson22.github.io/Handball/",
+  "short_name": "Handball",
+  "start_url": "https://jonlarson22.github.io/Handball/index.html",
+  "theme_color": "#3498db"
+}
