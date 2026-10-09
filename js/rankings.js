@@ -823,7 +823,7 @@ function render() {
                         <div style="color: #e74c3c;">${lossNames}</div>
                     </div>`;
             } else {
-                matchupHTML = `<span style="color: #2ecc71;">${winNames}</span> <small style="color:#666">vs</small> <span style="color: #e74c3c;">${lossNames}</span>`;
+                matchupHTML = `<span style="color: #2ecc71; white-space:nowrap;">${winNames}</span> <small style="color:#666">vs</small> <span style="color: #e74c3c; white-space:nowrap;">${lossNames}</span>`;
             }
 
             let plusShifts = [];
@@ -854,7 +854,7 @@ function render() {
                     <div style="font-weight:bold;">${m.score || '0-0'}</div>
                     ${detailedScore}
                 </td>
-                <td style="font-size:10px">${shiftHTML}</td>
+                <td style="font-size:10px; white-space:nowrap;">${shiftHTML}</td>
                 
                 <td class="admin-only">
                     <button class="undo-btn" onclick="undoMatch(${m.id})">Delete</button>
