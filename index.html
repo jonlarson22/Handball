@@ -404,14 +404,14 @@
 
     <section id="screen-report" class="screen" hidden>
         <div id="report-print-head" hidden>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <img src="icon.png" alt="UHA" style="height: 60px; width: 60px; object-fit: contain;">
-                <div style="text-align: center; flex: 1; padding: 0 10px;">
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                <img src="icon.png" alt="UHA" style="height: 50px; width: 50px; object-fit: contain; margin-right: 15px;">
+                <div style="text-align: center; flex: 1;">
                     <h1 style="margin: 0;">Utah Handball Association</h1>
                     <h2 id="report-print-title" style="margin: 5px 0;">Player Report</h2>
                     <p id="report-print-date" style="margin: 0;"></p>
                 </div>
-                <img src="Arch Colored Clear BG Small.png" alt="Arch" style="height: 40px; object-fit: contain;">
+                <div style="width: 65px;"></div>
             </div>
         </div>
         <button class="uha-btn-outline btn-sm report-back" onclick="closeReport()">&#8592; Rankings</button>
@@ -442,7 +442,10 @@
             <button class="uha-btn uha-btn-blue" onclick="exportReport()" style="margin-top: 12px;">&#128196; Export / Print</button>
         </div>
         <div id="report-body"></div>
-        </section>main>
+                <div style="text-align: center; margin-top: 30px; padding: 20px;">
+            <img src="Arch Colored Clear BG Small.png" alt="Arch" style="height: 50px; object-fit: contain; opacity: 0.9;">
+        </div>
+    </section>
 
 <footer class="app-foot">
     <div id="connection-status">Connecting to Firebase...</div>
